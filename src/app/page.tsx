@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, LogIn, LogOut, CheckCircle } from 'lucide-react';
+import { User, LogIn, LogOut, CheckCircle, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 type ScanState = 'idle' | 'verified' | 'options';
 
@@ -85,23 +86,31 @@ export default function Home() {
             </Card>
         )}
         {scanState === 'options' && (
-            <div className="flex w-full max-w-2xl gap-8">
-                <Card className="flex-1 hover:shadow-xl transition-shadow duration-300">
-                    <CardContent className="p-0">
-                        <Button variant="ghost" className="w-full h-full aspect-square flex flex-col items-center justify-center gap-4">
-                            <LogIn className="h-20 w-20 text-foreground" />
-                            <span className="text-2xl font-semibold text-foreground">Check In</span>
-                        </Button>
-                    </CardContent>
-                </Card>
-                <Card className="flex-1 hover:shadow-xl transition-shadow duration-300">
-                    <CardContent className="p-0">
-                        <Button variant="ghost" className="w-full h-full aspect-square flex flex-col items-center justify-center gap-4">
-                            <LogOut className="h-20 w-20 text-foreground" />
-                            <span className="text-2xl font-semibold text-foreground">Check Out</span>
-                        </Button>
-                    </CardContent>
-                </Card>
+            <div className="flex flex-col items-center gap-8 w-full max-w-2xl">
+                <div className="relative w-full">
+                    <Input placeholder="Search..." className="pl-4 pr-12 h-12 rounded-full text-lg" />
+                    <Button size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full">
+                        <Search className="h-5 w-5" />
+                    </Button>
+                </div>
+                <div className="flex w-full gap-8">
+                    <Card className="flex-1 hover:shadow-xl transition-shadow duration-300">
+                        <CardContent className="p-0">
+                            <Button variant="ghost" className="w-full h-full aspect-square flex flex-col items-center justify-center gap-4">
+                                <LogIn className="h-20 w-20 text-foreground" />
+                                <span className="text-2xl font-semibold text-foreground">Check In</span>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                    <Card className="flex-1 hover:shadow-xl transition-shadow duration-300">
+                        <CardContent className="p-0">
+                            <Button variant="ghost" className="w-full h-full aspect-square flex flex-col items-center justify-center gap-4">
+                                <LogOut className="h-20 w-20 text-foreground" />
+                                <span className="text-2xl font-semibold text-foreground">Check Out</span>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         )}
       </main>

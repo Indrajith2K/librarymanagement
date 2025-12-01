@@ -1,12 +1,12 @@
 
-import { Header } from '@/components/layout/Header';
+import { AdminHeader } from '@/components/layout/AdminHeader';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Book, Users } from "lucide-react";
 
 export default function AdminDashboardPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <Header />
+      <AdminHeader />
       <main className="flex flex-1 flex-col items-center p-4 md:p-8">
         <div className="w-full max-w-6xl">
             <div className="mb-8 text-center md:text-left">

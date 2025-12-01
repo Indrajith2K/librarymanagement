@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
+  AlertDialogFooter,
 } from "@/components/ui/alert-dialog"
 
 type ScanState = 'idle' | 'verified' | 'options';
@@ -34,6 +35,10 @@ export default function Home() {
 
   const handleCheckIn = () => {
     router.push('/check-in');
+  }
+
+  const handleCheckOut = () => {
+    router.push('/check-out');
   }
 
   useEffect(() => {
@@ -136,14 +141,30 @@ export default function Home() {
                           </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-                    <Card className="flex-1 hover:shadow-xl transition-shadow duration-300">
-                        <CardContent className="p-0">
-                            <Button variant="ghost" className="w-full h-full aspect-square flex flex-col items-center justify-center gap-4">
-                                <LogOut className="h-20 w-20 text-foreground" />
-                                <span className="text-2xl font-semibold text-foreground">Check Out</span>
-                            </Button>
-                        </CardContent>
-                    </Card>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Card className="flex-1 hover:shadow-xl transition-shadow duration-300 cursor-pointer">
+                                <CardContent className="p-0">
+                                    <div className="w-full h-full aspect-square flex flex-col items-center justify-center gap-4">
+                                        <LogOut className="h-20 w-20 text-foreground" />
+                                        <span className="text-2xl font-semibold text-foreground">Check Out</span>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure you want to check out?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action will mark you as checked out for your session.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>No</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleCheckOut}>Yes</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </div>
                 <div className="text-center mt-4">
                     <h3 className="text-lg font-semibold text-foreground">About Quicklook</h3>

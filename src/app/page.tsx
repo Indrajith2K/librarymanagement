@@ -14,10 +14,10 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-  AlertDialogFooter,
 } from "@/components/ui/alert-dialog"
 
 type ScanState = 'idle' | 'verified' | 'options';
@@ -79,7 +79,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      {scanState === 'idle' && <Header />}
+      <Header />
       <main className="flex flex-1 items-center justify-center">
         {scanState === 'idle' && (
             <Card className="w-[400px] shadow-lg">
@@ -109,7 +109,7 @@ export default function Home() {
         )}
         {scanState === 'options' && (
             <div className="flex flex-col items-center gap-8 w-full max-w-2xl px-4">
-                <Logo className="mb-4" iconClassName="h-8 w-8" textClassName="text-3xl" />
+                <Logo className="mb-4" iconClassName="h-10 w-10" textClassName="text-4xl" />
                 <div className="relative w-full shadow-md rounded-full">
                     <Input placeholder="Search..." className="pl-4 pr-12 h-12 rounded-full text-lg" />
                     <Button size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full">

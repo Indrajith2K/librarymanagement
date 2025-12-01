@@ -87,7 +87,7 @@ export default function Home() {
             </Card>
         )}
         {scanState === 'options' && (
-            <div className="flex flex-col items-center gap-8 w-full max-w-2xl">
+            <div className="flex flex-col items-center gap-8 w-full max-w-2xl px-4">
                 <Logo className="mb-4" iconClassName="h-8 w-8" textClassName="text-3xl" />
                 <div className="relative w-full shadow-md rounded-full">
                     <Input placeholder="Search..." className="pl-4 pr-12 h-12 rounded-full text-lg" />
@@ -112,6 +112,12 @@ export default function Home() {
                             </Button>
                         </CardContent>
                     </Card>
+                </div>
+                <div className="text-center mt-4">
+                    <h3 className="text-lg font-semibold text-foreground">About Quicklook</h3>
+                    <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+                        Quicklook is a RFID based smart AI library management system.
+                    </p>
                 </div>
             </div>
         )}

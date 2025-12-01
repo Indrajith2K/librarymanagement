@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,10 +8,37 @@ import { User, CheckCircle } from 'lucide-react';
 
 export default function Home() {
   const [isScanned, setIsScanned] = useState(false);
+  const [rfidInput, setRfidInput] = useState('');
 
   const handleScan = () => {
     setIsScanned(true);
+    // You could do something with the rfidInput here, like save it
+    console.log('Scanned RFID:', rfidInput);
   };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // When the 'Enter' key is pressed, we'll consider the scan complete.
+      if (event.key === 'Enter') {
+        if (rfidInput.length > 0) {
+          handleScan();
+          setRfidInput(''); // Reset for the next scan
+        }
+      } else if (event.key.length === 1) {
+        // Append character keys to our input state
+        setRfidInput((prev) => prev + event.key);
+      }
+    };
+
+    // Add event listener for keyboard input
+    window.addEventListener('keydown', handleKeyDown);
+
+    // Clean up the event listener when the component unmounts
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [rfidInput]);
+
 
   return (
     <div className="flex flex-col min-h-screen bg-background">

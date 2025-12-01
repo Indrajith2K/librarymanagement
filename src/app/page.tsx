@@ -1,24 +1,40 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { User, LogIn, LogOut, CheckCircle, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Logo } from '@/components/Logo';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 type ScanState = 'idle' | 'verified' | 'options';
 
 export default function Home() {
   const [scanState, setScanState] = useState<ScanState>('idle');
   const [rfidInput, setRfidInput] = useState('');
+  const router = useRouter();
 
   const handleScan = () => {
     // You could do something with the rfidInput here, like save it
     console.log('Scanned RFID:', rfidInput);
     setScanState('verified');
   };
+
+  const handleCheckIn = () => {
+    router.push('/check-in');
+  }
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -96,14 +112,30 @@ export default function Home() {
                     </Button>
                 </div>
                 <div className="flex w-full gap-8">
-                    <Card className="flex-1 hover:shadow-xl transition-shadow duration-300">
-                        <CardContent className="p-0">
-                            <Button variant="ghost" className="w-full h-full aspect-square flex flex-col items-center justify-center gap-4">
-                                <LogIn className="h-20 w-20 text-foreground" />
-                                <span className="text-2xl font-semibold text-foreground">Check In</span>
-                            </Button>
-                        </CardContent>
-                    </Card>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                          <Card className="flex-1 hover:shadow-xl transition-shadow duration-300 cursor-pointer">
+                              <CardContent className="p-0">
+                                  <div className="w-full h-full aspect-square flex flex-col items-center justify-center gap-4">
+                                      <LogIn className="h-20 w-20 text-foreground" />
+                                      <span className="text-2xl font-semibold text-foreground">Check In</span>
+                                  </div>
+                              </CardContent>
+                          </Card>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                          <AlertDialogHeader>
+                          <AlertDialogTitle>Are you sure you want to check in?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                              This action will mark you as checked in for your session.
+                          </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                          <AlertDialogCancel>No</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleCheckIn}>Yes</AlertDialogAction>
+                          </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                     <Card className="flex-1 hover:shadow-xl transition-shadow duration-300">
                         <CardContent className="p-0">
                             <Button variant="ghost" className="w-full h-full aspect-square flex flex-col items-center justify-center gap-4">

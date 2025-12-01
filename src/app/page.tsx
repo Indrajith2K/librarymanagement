@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { User, LogIn, LogOut, CheckCircle, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Logo } from '@/components/Logo';
 
 type ScanState = 'idle' | 'verified' | 'options';
 
@@ -57,7 +58,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <Header />
+      {scanState === 'idle' && <Header />}
       <main className="flex flex-1 items-center justify-center">
         {scanState === 'idle' && (
             <Card className="w-[400px] shadow-lg">
@@ -87,6 +88,7 @@ export default function Home() {
         )}
         {scanState === 'options' && (
             <div className="flex flex-col items-center gap-8 w-full max-w-2xl">
+                <Logo className="mb-4" />
                 <div className="relative w-full shadow-md rounded-full">
                     <Input placeholder="Search..." className="pl-4 pr-12 h-12 rounded-full text-lg" />
                     <Button size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full">

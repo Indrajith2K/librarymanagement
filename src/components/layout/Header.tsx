@@ -8,7 +8,7 @@ export function Header() {
       <div className="flex h-14 items-center justify-between px-6">
         <Logo />
         <Button asChild variant="outline" className="rounded-full shadow-md">
-          <Link href="#">Admin Login</Link>
+          <Link href="/admin/login">Admin Login</Link>
         </Button>
       </div>
     </header>

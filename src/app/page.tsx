@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Header } from '@/components/layout/Header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { User, LogIn, LogOut, CheckCircle, Search } from 'lucide-react';
@@ -14,11 +13,11 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import Link from 'next/link';
 
 type ScanState = 'idle' | 'verified' | 'options';
 
@@ -78,8 +77,12 @@ export default function Home() {
 
 
   return (
-    <div className="flex flex-col min-h-screen bg-background pt-24">
-      <Header />
+    <div className="flex flex-col min-h-screen bg-background">
+        <div className="absolute top-4 right-4 z-50">
+            <Button asChild variant="outline" className="rounded-full shadow-md">
+                <Link href="/admin/login">Admin Login</Link>
+            </Button>
+        </div>
       <main className="flex flex-1 items-center justify-center">
         {scanState === 'idle' && (
             <Card className="w-[400px] shadow-lg">

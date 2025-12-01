@@ -116,7 +116,7 @@ export default function Home() {
                 <div className="text-center mt-4">
                     <h3 className="text-lg font-semibold text-foreground">About Quicklook</h3>
                     <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-                        Quicklook is a RFID based smart AI library management system.
+                        Quicklook is a RFID based smart AI library management system. Seamlessly check in and check out books with a simple tap of your ID card. Our intelligent system helps you find books faster and manage your borrows with ease.
                     </p>
                 </div>
             </div>

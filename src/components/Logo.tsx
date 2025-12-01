@@ -10,7 +10,7 @@ export function Logo({ className }: LogoProps) {
   return (
     <Link href="/" className={cn("flex items-center gap-2", className)}>
       <Rocket className="h-6 w-6 text-accent" />
-      <span className="text-xl font-bold text-foreground">React Starter</span>
+      <span className="text-xl font-bold text-foreground">quicklook</span>
     </Link>
   );
 }

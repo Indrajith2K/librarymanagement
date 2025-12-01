@@ -7,7 +7,7 @@ export function Header() {
     <header className="fixed top-4 left-4 right-4 z-50 rounded-full border border-white/20 bg-white/10 shadow-lg backdrop-blur-lg supports-[backdrop-filter]:bg-white/10">
       <div className="flex h-14 items-center justify-between px-6">
         <Logo />
-        <Button asChild variant="outline" className="rounded-full">
+        <Button asChild variant="outline" className="rounded-full shadow-md">
           <Link href="#">Admin Login</Link>
         </Button>
       </div>

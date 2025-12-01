@@ -4,20 +4,24 @@ import { useState, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, LogIn, LogOut } from 'lucide-react';
+import { User, LogIn, LogOut, CheckCircle } from 'lucide-react';
+
+type ScanState = 'idle' | 'verified' | 'options';
 
 export default function Home() {
-  const [isScanned, setIsScanned] = useState(false);
+  const [scanState, setScanState] = useState<ScanState>('idle');
   const [rfidInput, setRfidInput] = useState('');
 
   const handleScan = () => {
-    setIsScanned(true);
     // You could do something with the rfidInput here, like save it
     console.log('Scanned RFID:', rfidInput);
+    setScanState('verified');
   };
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (scanState !== 'idle') return;
+
       // When the 'Enter' key is pressed, we'll consider the scan complete.
       if (event.key === 'Enter') {
         if (rfidInput.length > 0) {
@@ -37,14 +41,24 @@ export default function Home() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [rfidInput]);
+  }, [rfidInput, scanState]);
+
+  useEffect(() => {
+    if (scanState === 'verified') {
+      const timer = setTimeout(() => {
+        setScanState('options');
+      }, 1500); // Wait for 1.5 seconds before showing options
+
+      return () => clearTimeout(timer);
+    }
+  }, [scanState]);
 
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
       <main className="flex flex-1 items-center justify-center">
-        {!isScanned ? (
+        {scanState === 'idle' && (
             <Card className="w-[400px] shadow-lg">
                 <CardContent className="flex flex-col items-center justify-center p-12">
                     <Button variant="ghost" className="h-auto w-auto flex flex-col items-center justify-center p-0" onClick={handleScan}>
@@ -57,7 +71,20 @@ export default function Home() {
                     </Button>
                 </CardContent>
             </Card>
-        ) : (
+        )}
+        {scanState === 'verified' && (
+             <Card className="w-[400px] shadow-lg">
+                <CardContent className="flex flex-col items-center justify-center p-12">
+                    <div className="flex flex-col items-center justify-center">
+                        <CheckCircle className="h-32 w-32 text-green-500" />
+                        <p className="mt-6 text-center text-xl font-semibold text-foreground">
+                        Verified
+                        </p>
+                    </div>
+                </CardContent>
+            </Card>
+        )}
+        {scanState === 'options' && (
             <div className="flex w-full max-w-2xl gap-8">
                 <Card className="flex-1 hover:shadow-xl transition-shadow duration-300">
                     <CardContent className="p-0">

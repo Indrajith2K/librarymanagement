@@ -4,13 +4,15 @@ import { cn } from '@/lib/utils';
 
 type LogoProps = {
   className?: string;
+  iconClassName?: string;
+  textClassName?: string;
 };
 
-export function Logo({ className }: LogoProps) {
+export function Logo({ className, iconClassName, textClassName }: LogoProps) {
   return (
     <Link href="/" className={cn("flex items-center gap-2", className)}>
-      <Rocket className="h-6 w-6 text-accent" />
-      <span className="text-xl font-bold text-foreground">quicklook</span>
+      <Rocket className={cn("h-6 w-6 text-accent", iconClassName)} />
+      <span className={cn("text-xl font-bold text-foreground", textClassName)}>quicklook</span>
     </Link>
   );
 }

@@ -3,13 +3,17 @@
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
 
 export function AdminHeader() {
   const router = useRouter();
+  const auth = useAuth();
 
-  const handleLogout = () => {
-    // For now, this just redirects to the home page.
-    // In a real app, you'd handle actual session logout here.
+  const handleLogout = async () => {
+    if (auth) {
+      await signOut(auth);
+    }
     router.push('/');
   };
 
@@ -24,3 +28,5 @@ export function AdminHeader() {
     </header>
   );
 }
+
+    

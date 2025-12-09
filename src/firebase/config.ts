@@ -6,14 +6,15 @@
 // 2. In your project, go to Project Settings (the gear icon).
 // 3. In the "Your apps" card, select the web app for this project.
 // 4. Look for "SDK setup and configuration" and select "Config".
-// 5. Copy the entire `firebaseConfig` object and paste it below.
+// 5. Copy the entire `firebaseConfig` object from the console.
+// 6. PASTE THE COPIED OBJECT HERE, REPLACING THE PLACEHOLDER BELOW.
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "000000000000",
-  appId: "1:000000000000:web:0000000000000000000000",
-  measurementId: "G-XXXXXXXXXX"
+  apiKey: "PASTE_YOUR_API_KEY_HERE",
+  authDomain: "PASTE_YOUR_AUTH_DOMAIN_HERE",
+  projectId: "PASTE_YOUR_PROJECT_ID_HERE",
+  storageBucket: "PASTE_YOUR_STORAGE_BUCKET_HERE",
+  messagingSenderId: "PASTE_YOUR_MESSAGING_SENDER_ID_HERE",
+  appId: "PASTE_YOUR_APP_ID_HERE",
+  measurementId: "PASTE_YOUR_MEASUREMENT_ID_HERE"
 };

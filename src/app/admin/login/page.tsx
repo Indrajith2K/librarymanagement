@@ -8,52 +8,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { UserCircle2 } from "lucide-react";
-import { useAuth } from '@/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
 
 export default function AdminLoginPage() {
-  const [email, setEmail] = useState('');
+  const [staffId, setStaffId] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
   const { toast } = useToast();
-  const auth = useAuth();
 
-  const handleLogin = async () => {
-    if (!auth) {
-        toast({
-            variant: "destructive",
-            title: "Authentication Error",
-            description: "Firebase Auth is not initialized.",
-        });
-        return;
-    }
-
-    // Replace dummy credentials with Firebase Auth
-    // The previous dummy credentials were: staffId === '23di21' && password === '12345'
-    // For now, let's use a test email and password. In a real scenario, you'd have a way to create admin users.
-    try {
-        await signInWithEmailAndPassword(auth, email, password);
-        router.push('/admin/dashboard');
-    } catch (error: any) {
-        let description = "An unknown error occurred.";
-        switch (error.code) {
-            case 'auth/user-not-found':
-            case 'auth/wrong-password':
-            case 'auth/invalid-credential':
-                description = "Invalid email or password.";
-                break;
-            case 'auth/invalid-email':
-                description = "Please enter a valid email address.";
-                break;
-            default:
-                description = "Login failed. Please try again.";
-                break;
-        }
-        toast({
-            variant: "destructive",
-            title: "Login Failed",
-            description,
-        });
+  const handleLogin = () => {
+    if (staffId === '23di21' && password === '12345') {
+      router.push('/admin/dashboard');
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: "Invalid Staff ID or password.",
+      });
     }
   };
 
@@ -67,14 +37,14 @@ export default function AdminLoginPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="staffId">Staff ID</Label>
             <Input 
-              id="email" 
-              type="email"
-              placeholder="Enter your email" 
+              id="staffId" 
+              type="text"
+              placeholder="Enter your Staff ID" 
               required 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={staffId}
+              onChange={(e) => setStaffId(e.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -96,5 +66,3 @@ export default function AdminLoginPage() {
     </div>
   );
 }
-
-    

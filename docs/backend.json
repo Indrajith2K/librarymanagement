@@ -170,7 +170,7 @@
         }
     },
     "auth": {
-        "providers": ["password"]
+        "providers": ["password", "google.com"]
     },
     "firestore": {
         "/books/{bookId}": { "schema": { "$ref": "#/entities/Book" }, "description": "Collection of all books in the library." },
@@ -187,5 +187,3 @@
         "/adminActivityLogs/{logId}": { "schema": { "$ref": "#/entities/AdminActivityLog" }, "description": "Immutable audit trail of admin actions." }
     }
 }
-
-    

@@ -65,7 +65,7 @@ function SettingsPageContent() {
             <CardHeader>
                 <CardTitle>System Settings</CardTitle>
                 <CardDescription>Configure system-wide application settings.</CardDescription>
-            </Header>
+            </CardHeader>
             <CardContent className="space-y-4">
                 
                 <div className="flex items-center justify-between space-x-4">

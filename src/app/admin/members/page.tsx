@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MoreHorizontal, Search, UserPlus } from 'lucide-react';
 import { AdminUserProvider } from '@/context/AdminUserContext';
 import { useFirestore, useCollection } from '@/firebase';
@@ -20,7 +19,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 
 
 interface Member {
@@ -226,7 +224,7 @@ function MembersPageContent() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Member</TableHead>
+                  <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Member Type</TableHead>
                   <TableHead>RFID Card ID</TableHead>
@@ -237,7 +235,7 @@ function MembersPageContent() {
               <TableBody>
                 {loading && Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell className="flex items-center gap-2"><Skeleton className="h-8 w-8 rounded-full" /><Skeleton className="h-6 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-40" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-24" /></TableCell>
@@ -247,11 +245,7 @@ function MembersPageContent() {
                 ))}
                 {!loading && members?.map((member) => (
                   <TableRow key={member.id}>
-                    <TableCell className="font-medium flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                            <AvatarImage src={`https://i.pravatar.cc/40?u=${member.id}`} />
-                            <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
+                    <TableCell className="font-medium">
                         {member.name}
                     </TableCell>
                     <TableCell>{member.email}</TableCell>

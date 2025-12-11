@@ -4,14 +4,14 @@ import { Logo } from '@/components/Logo';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
-import { LayoutDashboard, Book, Users, History, Settings, LogOut, HelpCircle, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, Book, Users, History, Settings, LogOut, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 
 const navItems = [
-  { href: '/admin/dashboard', icon: RefreshCw, label: 'Dashboard' },
+  { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/books', icon: Book, label: 'Books' },
   { href: '/admin/members', icon: Users, label: 'Members' },
   { href: '/admin/history', icon: History, label: 'History' },

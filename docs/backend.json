@@ -184,7 +184,7 @@
         "/reservations/{reservationId}": { "schema": { "$ref": "#/entities/Reservation" }, "description": "Book reservations made by members." },
         "/fines/{fineId}": { "schema": { "$ref": "entities/Fine" }, "description": "Fines incurred by members." },
         "/reports/{reportId}": { "schema": { "$ref": "#/entities/Report" }, "description": "Metadata for generated reports." },
-        "/adminUsers/{userId}": { "schema": { "$ref": "#/entities/AdminUser" }, "description": "Administrator and staff accounts." },
+        "/adminusers/{userId}": { "schema": { "$ref": "#/entities/AdminUser" }, "description": "Administrator and staff accounts." },
         "/systemSettings/{settingId}": { "schema": { "$ref": "#/entities/SystemSetting" }, "description": "System-wide library settings." },
         "/adminActivityLogs/{logId}": { "schema": { "$ref": "#/entities/AdminActivityLog" }, "description": "Immutable audit trail of admin actions." }
     }

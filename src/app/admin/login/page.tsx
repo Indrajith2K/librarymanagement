@@ -80,7 +80,7 @@ export default function AdminLoginPage() {
     setPasswordLoading(true);
 
     try {
-        const adminUsersRef = collection(firestore, "adminUsers");
+        const adminUsersRef = collection(firestore, "adminusers");
         const q = query(adminUsersRef, where("staffId", "==", staffId));
         const querySnapshot = await getDocs(q);
 

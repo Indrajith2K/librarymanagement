@@ -1,17 +1,17 @@
 /**
  * This ruleset enforces a strict Role-Based Access Control (RBAC) model for the Quicklook Library Management System.
  *
- * Core Philosophy: Access to most data collections is restricted to authenticated administrators. The one exception is the `adminUsers` collection, which is publicly readable to allow for Staff ID/Password authentication checks before a user is formally signed into the system. This creates a secure, admin-centric environment while enabling a necessary pre-authentication step.
+ * Core Philosophy: Access to most data collections is restricted to authenticated administrators. The one exception is the `adminusers` collection, which is publicly readable to allow for Staff ID/Password authentication checks before a user is formally signed into the system. This creates a secure, admin-centric environment while enabling a necessary pre-authentication step.
  *
  * Data Structure: The Firestore structure is flat, with all data entities residing in top-level collections (e.g., /books, /members). This design simplifies rule application and queries.
  *
  * Key Security Decisions:
  * - Default Deny: All operations are denied by default.
- * - Admin-Only Write Access: While `adminUsers` is readable, write access to all collections is gated behind the `isAdmin()` check, which verifies a user's authenticated UID exists in the admin list.
+ * - Admin-Only Write Access: While `adminusers` is readable, write access to all collections is gated behind the `isAdmin()` check, which verifies a user's authenticated UID exists in the admin list.
  * - Immutable Logs: The `/adminActivityLogs` collection is write-once. Once a log is created, it cannot be updated or deleted, ensuring a tamper-proof audit trail.
  * - Creator Validation: For entities logging an admin's action (e.g., circulation logs), rules enforce that the `actorId` or `adminUserId` must match the UID of the admin creating the document.
  *
- * Denormalization for Authorization: The `/adminUsers` collection is a centralized list of authorized personnel. Making it readable allows the client to verify credentials without prior authentication. Subsequent operations rely on the Firebase Auth UID being present in this list, which is verified by `isAdmin()`.
+ * Denormalization for Authorization: The `/adminusers` collection is a centralized list of authorized personnel. Making it readable allows the client to verify credentials without prior authentication. Subsequent operations rely on the Firebase Auth UID being present in this list, which is verified by `isAdmin()`.
  *
  * Structural Segregation: Each data type is in its own collection, ensuring access rules are isolated and efficient.
  */
@@ -33,10 +33,10 @@ service cloud.firestore {
     /**
      * Checks if the signed-in user is a registered administrator.
      * This is the primary authorization check for all write operations and sensitive reads.
-     * It verifies the user's UID exists as a document in the adminUsers collection.
+     * It verifies the user's UID exists as a document in the adminusers collection.
      */
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid));
+      return isSignedIn() && exists(/databases/$(database)/documents/adminusers/$(request.auth.uid));
     }
 
     /**
@@ -184,12 +184,12 @@ service cloud.firestore {
 
     /**
      * @description Manages administrator accounts, roles, and permissions.
-     * @path /adminUsers/{adminUserId}
+     * @path /adminusers/{adminUserId}
      * @allow (read) Public read is allowed so the login page can verify Staff ID/Password without the user being authenticated.
      * @allow (write) Only existing admins can create, update, or delete other admin accounts.
      * @principle Allows for a pre-authentication check while securing write operations to trusted users.
      */
-    match /adminUsers/{adminUserId} {
+    match /adminusers/{adminUserId} {
       allow read: if true;
       allow write: if isAdmin();
     }

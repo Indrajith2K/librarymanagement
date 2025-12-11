@@ -1,11 +1,14 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useUser } from '@/firebase';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Book, Users, UserPlus, BookUp, Link as LinkIcon, MoreHorizontal, Users2, Library, BookCheck, BookX } from "lucide-react";
+import { UserPlus, BookUp, MoreHorizontal, Users2, Library, BookX } from "lucide-react";
 import Image from 'next/image';
 
 const users = [
@@ -32,8 +35,33 @@ const topChoices = [
 ];
 
 export default function AdminDashboardPage() {
-  const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
-  const currentTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const { user, loading } = useUser();
+  const router = useRouter();
+  const [currentDate, setCurrentDate] = useState('');
+  const [currentTime, setCurrentTime] = useState('');
+
+
+  useEffect(() => {
+    // If loading is finished and there's no user, redirect to login
+    if (!loading && !user) {
+      router.push('/admin/login');
+    }
+  }, [user, loading, router]);
+
+  useEffect(() => {
+    const date = new Date();
+    setCurrentDate(date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }));
+    setCurrentTime(date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }));
+  }, []);
+
+  // While loading, show a placeholder or a spinner
+  if (loading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Loading dashboard...</p>
+      </div>
+    );
+  }
 
   return (
     <AdminLayout>

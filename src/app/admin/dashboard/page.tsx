@@ -21,6 +21,13 @@ interface Member {
   memberType: 'student' | 'staff';
 }
 
+interface Book {
+  id: string;
+  title: string;
+  author: string;
+  status: 'available' | 'issued' | 'lost' | 'damaged' | 'reserved';
+}
+
 function AdminDashboardContent() {
   const { user, loading: authLoading } = useUser();
   const { adminUser, loading: adminUserLoading } = useAdminUser();
@@ -31,11 +38,16 @@ function AdminDashboardContent() {
 
   const membersQuery = useMemo(() => {
     if (!firestore) return null;
-    // We can add .limit(4) here to only fetch a few for the dashboard
     return query(collection(firestore, 'members'));
   }, [firestore]);
 
+  const booksQuery = useMemo(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'books'));
+  }, [firestore]);
+
   const { data: members, loading: membersLoading, error: membersError } = useCollection<Member>(membersQuery);
+  const { data: books, loading: booksLoading, error: booksError } = useCollection<Book>(booksQuery);
 
 
   const loading = authLoading || adminUserLoading;
@@ -70,13 +82,6 @@ function AdminDashboardContent() {
         </div>
     );
   }
-  
-  const books = [
-    { id: '#B-10021-30', title: 'Ancestor Trouble', author: 'Maud Newton', available: 30 },
-    { id: '#B-32521-31', title: 'Life is Everywhere', author: 'Lucy Ives', available: 23 },
-    { id: '#G-95501-31', title: 'Stroller', author: 'Amanda Parrish', available: 90 },
-    { id: '#R-773521-67', title: 'The Secret Syllabus', author: 'Terence C. Burnhum', available: 6 },
-  ];
   
   const topChoices = [
       { title: 'The Critique of Pure Reason', author: 'Immanuel Kant', imageUrl: 'https://picsum.photos/seed/critique/200/300', imageHint: 'philosophy book' },
@@ -202,20 +207,34 @@ function AdminDashboardContent() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Book ID</TableHead>
                                     <TableHead>Title</TableHead>
                                     <TableHead>Author</TableHead>
-                                    <TableHead>Available</TableHead>
+                                    <TableHead>Status</TableHead>
                                     <TableHead>Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {books.map((book) => (
+                                {booksLoading && Array.from({ length: 4 }).map((_, i) => (
+                                    <TableRow key={i}>
+                                        <TableCell><Skeleton className="h-6 w-32" /></TableCell>
+                                        <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                                        <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                                        <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                                    </TableRow>
+                                ))}
+                                {!booksLoading && books?.slice(0, 4).map((book) => (
                                     <TableRow key={book.id}>
-                                        <TableCell>{book.id}</TableCell>
                                         <TableCell className="font-medium">{book.title}</TableCell>
                                         <TableCell>{book.author}</TableCell>
-                                        <TableCell>{book.available}</TableCell>
+                                        <TableCell>
+                                            <span className={`px-2 py-1 text-xs rounded-full capitalize ${
+                                                book.status === 'available' ? 'bg-green-100 text-green-800' 
+                                                : book.status === 'issued' ? 'bg-yellow-100 text-yellow-800' 
+                                                : 'bg-gray-100 text-gray-800'
+                                            }`}>
+                                                {book.status}
+                                            </span>
+                                        </TableCell>
                                         <TableCell>
                                             <Button variant="ghost" size="icon">
                                                 <MoreHorizontal className="h-4 w-4" />
@@ -225,6 +244,7 @@ function AdminDashboardContent() {
                                 ))}
                             </TableBody>
                         </Table>
+                        {booksError && <p className="text-red-500 text-center p-4">Error: {booksError.message}</p>}
                          <div className="text-right mt-4 pr-6">
                             <Button variant="link" className="text-pink-500" onClick={() => router.push('/admin/books')}>See All</Button>
                         </div>

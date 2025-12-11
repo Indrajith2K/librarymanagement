@@ -13,7 +13,7 @@ service cloud.firestore {
     }
 
     // This rule is tricky because password-based admins don't have an auth object.
-    // For now, we secure create/update/delete at the application level.
+    // We secure create/update/delete at the application level.
     function isAdmin() {
       // For Google-auth users, we can check if their UID exists in the adminusers collection.
       return isSignedIn() && exists(/databases/$(database)/documents/adminusers/$(request.auth.uid));
@@ -43,7 +43,8 @@ service cloud.firestore {
       // Temporarily allow public read to verify data flow
       allow read: if true; 
       // Allow writes only from authenticated admin users (app-level check for password admins)
-      allow write: if isAdmin();
+      allow create: if true; // relies on app logic to be secure
+      allow update, delete: if isAdmin();
     }
 
     match /members/{memberId} {

@@ -1,16 +1,23 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BookUp, MoreHorizontal, Search } from 'lucide-react';
+import { BookUp, MoreHorizontal, Search, ScanLine } from 'lucide-react';
 import { AdminUserProvider } from '@/context/AdminUserContext';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import { collection, query, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 
 interface Book {
   id: string;
@@ -20,8 +27,180 @@ interface Book {
   status: 'available' | 'issued' | 'lost' | 'damaged' | 'reserved';
 }
 
+const bookSchema = z.object({
+    title: z.string().min(1, "Title is required"),
+    author: z.string().min(1, "Author is required"),
+    rfidTagId: z.string().min(1, "RFID Tag ID is required"),
+    status: z.enum(['available', 'issued', 'lost', 'damaged', 'reserved']).default('available'),
+});
+
+type BookFormData = z.infer<typeof bookSchema>;
+
+function AddBookForm({ onFinished }: { onFinished: () => void }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
+    const [scannedId, setScannedId] = useState('');
+
+    const form = useForm<BookFormData>({
+        resolver: zodResolver(bookSchema),
+        defaultValues: {
+            title: '',
+            author: '',
+            rfidTagId: '',
+            status: 'available',
+        },
+    });
+
+    useEffect(() => {
+        if (!isScanning) return;
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+          if (event.key === 'Enter' && scannedId) {
+            form.setValue('rfidTagId', scannedId);
+            setIsScanning(false);
+            setScannedId('');
+            toast({ title: 'Scan Complete', description: `RFID ${scannedId} captured.` });
+          } else if (event.key.length === 1) {
+            setScannedId(prev => prev + event.key);
+          }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+
+    }, [isScanning, scannedId, form, toast]);
+
+    async function onSubmit(values: BookFormData) {
+        if (!firestore) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not available.' });
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            await addDoc(collection(firestore, 'books'), {
+                ...values,
+                isDeleted: false,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            });
+            toast({ title: 'Success', description: 'New book has been added.' });
+            onFinished();
+            form.reset();
+        } catch (error: any) {
+            console.error("Error adding book: ", error);
+            toast({ variant: 'destructive', title: 'Error adding book', description: error.message });
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    return (
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Book Title</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g. The Great Gatsby" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="author"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Author</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g. F. Scott Fitzgerald" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="rfidTagId"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>RFID Tag ID</FormLabel>
+                            <div className="flex items-center gap-2">
+                                <FormControl>
+                                    <Input 
+                                        placeholder={isScanning ? "Scanning..." : "Enter ID or scan"} 
+                                        {...field}
+                                        disabled={isScanning}
+                                    />
+                                </FormControl>
+                                <Button 
+                                    type="button" 
+                                    variant="outline"
+                                    onClick={() => {
+                                        setIsScanning(prev => !prev);
+                                        setScannedId('');
+                                    }}
+                                >
+                                    <ScanLine className="h-4 w-4" />
+                                    <span className="ml-2 hidden sm:inline">{isScanning ? 'Cancel' : 'Scan'}</span>
+                                </Button>
+                            </div>
+                            {isScanning && (
+                                <p className="text-sm text-primary animate-pulse p-2 bg-primary/10 rounded-md">
+                                    Ready to scan. Please present the RFID tag...
+                                </p>
+                            )}
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Status</FormLabel>
+                             <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a status" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <SelectItem value="available">Available</SelectItem>
+                                    <SelectItem value="issued">Issued</SelectItem>
+                                    <SelectItem value="reserved">Reserved</SelectItem>
+                                    <SelectItem value="lost">Lost</SelectItem>
+                                    <SelectItem value="damaged">Damaged</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button type="button" variant="outline" onClick={() => setIsScanning(false)}>Cancel</Button>
+                    </DialogClose>
+                    <Button type="submit" disabled={isSubmitting || isScanning}>
+                        {isSubmitting ? 'Adding...' : 'Add Book'}
+                    </Button>
+                </DialogFooter>
+            </form>
+        </Form>
+    );
+}
+
+
 function BooksPageContent() {
   const firestore = useFirestore();
+  const [isAddBookOpen, setAddBookOpen] = useState(false);
 
   const booksQuery = useMemo(() => {
     if (!firestore) return null;
@@ -47,7 +226,22 @@ function BooksPageContent() {
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input placeholder="Search books..." className="pl-8" />
                     </div>
-                    <Button><BookUp className="mr-2 h-4 w-4" /> Add New Book</Button>
+                     <Dialog open={isAddBookOpen} onOpenChange={setAddBookOpen}>
+                        <DialogTrigger asChild>
+                           <Button><BookUp className="mr-2 h-4 w-4" /> Add New Book</Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle>Add New Book</DialogTitle>
+                                <DialogDescription>
+                                    Fill in the details below to add a new book to the collection.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="py-4">
+                               <AddBookForm onFinished={() => setAddBookOpen(false)} />
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
           </CardHeader>
@@ -74,7 +268,7 @@ function BooksPageContent() {
                 ))}
                 {!loading && books?.map((book) => (
                   <TableRow key={book.id}>
-                    <TableCell>{book.rfidTagId || book.id}</TableCell>
+                    <TableCell>{book.rfidTagId}</TableCell>
                     <TableCell className="font-medium">{book.title}</TableCell>
                     <TableCell>{book.author}</TableCell>
                     <TableCell>
@@ -96,7 +290,7 @@ function BooksPageContent() {
               </TableBody>
             </Table>
              {error && <p className="text-red-500 text-center p-4">Error loading books: {error.message}</p>}
-            {!loading && books?.length === 0 && <p className="text-muted-foreground text-center p-4">No books found.</p>}
+            {!loading && books?.length === 0 && <p className="text-muted-foreground text-center p-4">No books found. Click "Add New Book" to get started.</p>}
           </CardContent>
         </Card>
       </div>

@@ -1,19 +1,19 @@
 /**
  * This ruleset enforces a strict Role-Based Access Control (RBAC) model for the Quicklook Library Management System.
  *
- * Core Philosophy: Access to all data collections is restricted exclusively to authenticated users who are registered as administrators in the `/adminUsers` collection. This creates a secure, admin-only environment. There is no public or non-admin member access to any of these collections.
+ * Core Philosophy: Access to most data collections is restricted to authenticated administrators. The one exception is the `adminUsers` collection, which is publicly readable to allow for Staff ID/Password authentication checks before a user is formally signed into the system. This creates a secure, admin-centric environment while enabling a necessary pre-authentication step.
  *
- * Data Structure: The Firestore structure is flat, with all data entities residing in top-level collections (e.g., /books, /members, /circulationLogs). This design simplifies rule application and queries.
+ * Data Structure: The Firestore structure is flat, with all data entities residing in top-level collections (e.g., /books, /members). This design simplifies rule application and queries.
  *
  * Key Security Decisions:
  * - Default Deny: All operations are denied by default.
- * - Admin-Only Access: A user's request is only considered if their UID exists as a document ID in the `/adminUsers` collection. This is the primary security gate for the entire database.
+ * - Admin-Only Write Access: While `adminUsers` is readable, write access to all collections is gated behind the `isAdmin()` check, which verifies a user's authenticated UID exists in the admin list.
  * - Immutable Logs: The `/adminActivityLogs` collection is write-once. Once a log is created, it cannot be updated or deleted, ensuring a tamper-proof audit trail.
- * - Creator Validation: For entities that log an admin's action (like circulation logs and reports), the rules enforce that the `actorId` or `adminUserId` field in a new document must match the UID of the admin creating it.
+ * - Creator Validation: For entities logging an admin's action (e.g., circulation logs), rules enforce that the `actorId` or `adminUserId` must match the UID of the admin creating the document.
  *
- * Denormalization for Authorization: This ruleset relies on the existence of the `/adminUsers` collection to act as a centralized list of authorized personnel. A single `get()` call within the `isAdmin()` helper function is used to verify a user's admin status. This is a pragmatic approach that centralizes the core authorization logic, making the rules for individual collections simple and consistent.
+ * Denormalization for Authorization: The `/adminUsers` collection is a centralized list of authorized personnel. Making it readable allows the client to verify credentials without prior authentication. Subsequent operations rely on the Firebase Auth UID being present in this list, which is verified by `isAdmin()`.
  *
- * Structural Segregation: Each data type (books, members, alerts, etc.) is stored in its own dedicated top-level collection. This segregation ensures that access rules for one type of data do not inadvertently affect another, and it enables secure and efficient list operations for admins.
+ * Structural Segregation: Each data type is in its own collection, ensuring access rules are isolated and efficient.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -24,7 +24,7 @@ service cloud.firestore {
     // --------------------------------
 
     /**
-     * Checks if the user is signed in.
+     * Checks if the user is signed in via Firebase Authentication.
      */
     function isSignedIn() {
       return request.auth != null;
@@ -32,7 +32,7 @@ service cloud.firestore {
 
     /**
      * Checks if the signed-in user is a registered administrator.
-     * This is the primary authorization check for the entire admin panel.
+     * This is the primary authorization check for all write operations and sensitive reads.
      * It verifies the user's UID exists as a document in the adminUsers collection.
      */
     function isAdmin() {
@@ -185,12 +185,13 @@ service cloud.firestore {
     /**
      * @description Manages administrator accounts, roles, and permissions.
      * @path /adminUsers/{adminUserId}
-     * @allow (any) An authenticated admin user can manage all other admin user accounts.
-     * @deny (any) A non-admin user cannot read or modify any admin account, including their own potential future one.
-     * @principle Allows administrators to manage other administrators, forming a trusted subsystem.
+     * @allow (read) Public read is allowed so the login page can verify Staff ID/Password without the user being authenticated.
+     * @allow (write) Only existing admins can create, update, or delete other admin accounts.
+     * @principle Allows for a pre-authentication check while securing write operations to trusted users.
      */
     match /adminUsers/{adminUserId} {
-      allow get, list, create, update, delete: if isAdmin();
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     /**
@@ -218,5 +219,3 @@ service cloud.firestore {
     }
   }
 }
-
-    

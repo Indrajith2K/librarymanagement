@@ -7,9 +7,16 @@ import { Bell, Menu, Search } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { AdminSidebar } from "./AdminSidebar";
+import { useAdminUser } from "@/context/AdminUserContext";
 
 export function AdminHeader() {
   const { isMobile } = useSidebar();
+  const { adminUser } = useAdminUser();
+
+  const getInitials = (name: string | undefined) => {
+    if (!name) return 'A';
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  }
 
   return (
     <header className="flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6 sticky top-0 z-30">
@@ -46,12 +53,12 @@ export function AdminHeader() {
             <span className="sr-only">Toggle notifications</span>
         </Button>
         <Avatar className="h-9 w-9">
-            <AvatarImage src="https://i.pravatar.cc/150?u=arafat" />
-            <AvatarFallback>AH</AvatarFallback>
+            <AvatarImage src={`https://i.pravatar.cc/150?u=${adminUser?.staffId || adminUser?.email}`} />
+            <AvatarFallback>{getInitials(adminUser?.displayName)}</AvatarFallback>
         </Avatar>
         <div>
-            <p className="text-sm font-semibold">Arafat Hossain</p>
-            <p className="text-xs text-muted-foreground">Librarian</p>
+            <p className="text-sm font-semibold">{adminUser?.displayName || 'Admin User'}</p>
+            <p className="text-xs text-muted-foreground">{adminUser?.role || 'Admin Role'}</p>
         </div>
       </div>
     </header>

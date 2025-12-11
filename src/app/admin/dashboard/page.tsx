@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserPlus, BookUp, MoreHorizontal, Users2, Library, BookX } from "lucide-react";
 import Image from 'next/image';
+import { useAdminUser } from '@/context/AdminUserContext';
 
 const users = [
   { id: '10021', name: 'Alex Ray', booksIssued: 12, department: 'Psychology', avatar: '/avatars/01.png' },
@@ -35,22 +36,21 @@ const topChoices = [
 ];
 
 export default function AdminDashboardPage() {
-  const { user, loading } = useUser();
+  const { user, loading: authLoading } = useUser();
+  const { adminUser, loading: adminUserLoading } = useAdminUser();
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState('');
   const [currentTime, setCurrentTime] = useState('');
 
+  const loading = authLoading || adminUserLoading;
 
   useEffect(() => {
-    // We only want to redirect if loading is finished
-    if (!loading) {
-      const isDummyAdmin = sessionStorage.getItem('dummy_admin') === 'true';
-      // If there's no Firebase user AND it's not a dummy admin, then redirect.
-      if (!user && !isDummyAdmin) {
-        router.push('/admin/login');
-      }
+    const isPasswordAdmin = !!sessionStorage.getItem('admin_staff_id');
+    if (!loading && !user && !isPasswordAdmin) {
+      router.push('/admin/login');
     }
   }, [user, loading, router]);
+
 
   useEffect(() => {
     const date = new Date();
@@ -58,7 +58,6 @@ export default function AdminDashboardPage() {
     setCurrentTime(date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }));
   }, []);
 
-  // Show a loading screen while we verify the user's session.
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -66,11 +65,10 @@ export default function AdminDashboardPage() {
       </div>
     );
   }
-
-  // If after loading there's still no user, it means the useEffect is about to redirect.
-  // We can show a message or just an empty screen to prevent the dashboard from flashing.
-  if (!user && sessionStorage.getItem('dummy_admin') !== 'true') {
-    return (
+  
+  const isPasswordAdmin = !!sessionStorage.getItem('admin_staff_id');
+  if (!user && !isPasswordAdmin) {
+     return (
          <div className="flex items-center justify-center min-h-screen">
             <p>Redirecting to login...</p>
         </div>
@@ -81,7 +79,7 @@ export default function AdminDashboardPage() {
     <AdminLayout>
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-bold text-foreground">Hello, Arafat!</h1>
+                <h1 className="text-3xl font-bold text-foreground">Hello, {adminUser?.displayName || 'Admin'}!</h1>
                 <p className="text-muted-foreground">{currentDate} | {currentTime}</p>
             </div>
             

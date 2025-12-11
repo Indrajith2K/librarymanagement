@@ -52,6 +52,7 @@ export default function AdminLoginPage() {
               title: "Login Successful",
               description: "Redirecting to the admin dashboard...",
             });
+            sessionStorage.removeItem('admin_staff_id'); // Clear any password-based session
             router.push('/admin/dashboard');
           } else {
             // If not an admin, sign them out and show an error
@@ -113,7 +114,7 @@ export default function AdminLoginPage() {
                     title: "Login Successful",
                     description: "Redirecting to the admin dashboard...",
                 });
-                sessionStorage.setItem('dummy_admin', 'true');
+                sessionStorage.setItem('admin_staff_id', staffId);
                 router.push('/admin/dashboard');
             }
         });

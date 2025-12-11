@@ -25,8 +25,7 @@ export function AdminSidebar() {
   const auth = useAuth();
 
   const handleLogout = async () => {
-    // Clear the dummy admin session flag
-    sessionStorage.removeItem('dummy_admin');
+    sessionStorage.removeItem('admin_staff_id');
     
     if (auth && auth.currentUser) {
       await signOut(auth);

@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useCollection } from '@/firebase';
+import { collection, query } from 'firebase/firestore';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,13 +12,31 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserPlus, BookUp, MoreHorizontal, Users2, Library, BookX } from "lucide-react";
 import Image from 'next/image';
 import { useAdminUser, AdminUserProvider } from '@/context/AdminUserContext';
+import { Skeleton } from '@/components/ui/skeleton';
+
+interface Member {
+  id: string;
+  name: string;
+  email: string;
+  memberType: 'student' | 'staff';
+}
 
 function AdminDashboardContent() {
   const { user, loading: authLoading } = useUser();
   const { adminUser, loading: adminUserLoading } = useAdminUser();
   const router = useRouter();
+  const firestore = useFirestore();
   const [currentDate, setCurrentDate] = useState('');
   const [currentTime, setCurrentTime] = useState('');
+
+  const membersQuery = useMemo(() => {
+    if (!firestore) return null;
+    // We can add .limit(4) here to only fetch a few for the dashboard
+    return query(collection(firestore, 'members'));
+  }, [firestore]);
+
+  const { data: members, loading: membersLoading, error: membersError } = useCollection<Member>(membersQuery);
+
 
   const loading = authLoading || adminUserLoading;
 
@@ -51,13 +70,6 @@ function AdminDashboardContent() {
         </div>
     );
   }
-  
-  const users = [
-    { id: '10021', name: 'Alex Ray', booksIssued: 12, department: 'Psychology', avatar: '/avatars/01.png' },
-    { id: '12034', name: 'Sophia', booksIssued: 7, department: 'Business', avatar: '/avatars/02.png' },
-    { id: '22987', name: 'Jhon', booksIssued: 17, department: 'Computer Science', avatar: '/avatars/03.png' },
-    { id: '53272', name: 'Rose', booksIssued: 25, department: 'Pharmacy', avatar: '/avatars/04.png' },
-  ];
   
   const books = [
     { id: '#B-10021-30', title: 'Ancestor Trouble', author: 'Maud Newton', available: 30 },
@@ -127,33 +139,42 @@ function AdminDashboardContent() {
                     <CardHeader>
                         <div className="flex justify-between items-center">
                             <CardTitle>Users List</CardTitle>
-                            <Button variant="outline" size="sm"><UserPlus className="mr-2 h-4 w-4" /> Add New User</Button>
+                            <Button variant="outline" size="sm" onClick={() => router.push('/admin/members')}><UserPlus className="mr-2 h-4 w-4" /> Add New User</Button>
                         </div>
                     </CardHeader>
                     <CardContent>
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>User ID</TableHead>
                                     <TableHead>User Name</TableHead>
-                                    <TableHead>Book Issued</TableHead>
-                                    <TableHead>Department</TableHead>
+                                    <TableHead>Email</TableHead>
+                                    <TableHead>Books Issued</TableHead>
+                                    <TableHead>Member Type</TableHead>
                                     <TableHead>Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {users.map((user) => (
-                                    <TableRow key={user.id}>
-                                        <TableCell>{user.id}</TableCell>
+                                {membersLoading && Array.from({ length: 4 }).map((_, i) => (
+                                    <TableRow key={i}>
+                                        <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                                        <TableCell><Skeleton className="h-6 w-40" /></TableCell>
+                                        <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                                        <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                                        <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                                    </TableRow>
+                                ))}
+                                {!membersLoading && members?.slice(0, 4).map((member) => (
+                                    <TableRow key={member.id}>
                                         <TableCell className="font-medium flex items-center gap-2">
                                             <Avatar className="h-6 w-6">
-                                                <AvatarImage src={`https://i.pravatar.cc/40?u=${user.id}`} />
-                                                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                                                <AvatarImage src={`https://i.pravatar.cc/40?u=${member.id}`} />
+                                                <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
                                             </Avatar>
-                                            {user.name}
+                                            {member.name}
                                         </TableCell>
-                                        <TableCell>{user.booksIssued}</TableCell>
-                                        <TableCell>{user.department}</TableCell>
+                                        <TableCell>{member.email}</TableCell>
+                                        <TableCell>0</TableCell>
+                                        <TableCell className="capitalize">{member.memberType}</TableCell>
                                         <TableCell>
                                             <Button variant="ghost" size="icon">
                                                 <MoreHorizontal className="h-4 w-4" />
@@ -163,8 +184,9 @@ function AdminDashboardContent() {
                                 ))}
                             </TableBody>
                         </Table>
+                         {membersError && <p className="text-red-500 text-center p-4">Error: {membersError.message}</p>}
                          <div className="text-right mt-4 pr-6">
-                            <Button variant="link" className="text-pink-500">See All</Button>
+                            <Button variant="link" className="text-pink-500" onClick={() => router.push('/admin/members')}>See All</Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -173,7 +195,7 @@ function AdminDashboardContent() {
                     <CardHeader>
                         <div className="flex justify-between items-center">
                             <CardTitle>Books List</CardTitle>
-                            <Button variant="outline" size="sm"><BookUp className="mr-2 h-4 w-4" /> Add New Book</Button>
+                            <Button variant="outline" size="sm" onClick={() => router.push('/admin/books')}><BookUp className="mr-2 h-4 w-4" /> Add New Book</Button>
                         </div>
                     </CardHeader>
                     <CardContent>
@@ -204,7 +226,7 @@ function AdminDashboardContent() {
                             </TableBody>
                         </Table>
                          <div className="text-right mt-4 pr-6">
-                            <Button variant="link" className="text-pink-500">See All</Button>
+                            <Button variant="link" className="text-pink-500" onClick={() => router.push('/admin/books')}>See All</Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -236,4 +258,3 @@ export default function AdminDashboardPage() {
     </AdminUserProvider>
   );
 }
-

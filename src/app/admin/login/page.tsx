@@ -26,34 +26,41 @@ export default function AdminLoginPage() {
 
 
   useEffect(() => {
-    if (!auth) {
+    if (!auth || !firestore) {
       setIsLoading(false);
       return;
     };
 
     // This is for the Google Sign-in redirect flow
     getRedirectResult(auth)
-      .then((result) => {
+      .then(async (result) => {
         if (result) {
+          setGoogleLoading(true);
           const user = result.user;
-          // Check if the signed-in user is the designated admin
-          if (user.email === '23di21@psgpolytech.ac.in') {
+          const adminUsersRef = collection(firestore, "adminusers");
+          const q = query(adminUsersRef, where("email", "==", user.email));
+          const querySnapshot = await getDocs(q);
+
+          if (!querySnapshot.empty) {
+            // User is a valid admin
             toast({
               title: "Login Successful",
               description: "Redirecting to the admin dashboard...",
             });
             router.push('/admin/dashboard');
           } else {
-            // If not the admin, sign them out and show an error
-            signOut(auth);
+            // If not an admin, sign them out and show an error
+            await signOut(auth);
             toast({
               variant: "destructive",
               title: "Access Denied",
               description: "You are not authorized to access this admin panel.",
             });
+            setGoogleLoading(false);
           }
+        } else {
+            setIsLoading(false); // Stop loading if there's no redirect result
         }
-        setIsLoading(false); // Stop loading once redirect is processed or if there's no result
       })
       .catch((error) => {
         console.error("Google Sign-In Redirect Error: ", error);
@@ -65,7 +72,7 @@ export default function AdminLoginPage() {
         setIsLoading(false);
         setGoogleLoading(false);
       });
-  }, [auth, router, toast]);
+  }, [auth, firestore, router, toast]);
 
   const handlePasswordLogin = async () => {
     if (!firestore) {
@@ -165,7 +172,7 @@ export default function AdminLoginPage() {
                         required 
                         value={staffId}
                         onChange={(e) => setStaffId(e.target.value)}
-                        disabled={isPasswordLoading}
+                        disabled={isPasswordLoading || isGoogleLoading}
                     />
                 </div>
                 <div className="space-y-2">
@@ -177,11 +184,11 @@ export default function AdminLoginPage() {
                         required 
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        disabled={isPasswordLoading}
+                        disabled={isPasswordLoading || isGoogleLoading}
                     />
                 </div>
             </div>
-             <Button className="w-full" onClick={handlePasswordLogin} disabled={isPasswordLoading}>
+             <Button className="w-full" onClick={handlePasswordLogin} disabled={isPasswordLoading || isGoogleLoading}>
                 {isPasswordLoading ? 'Logging in...' : 'Login'}
             </Button>
             <div className="relative">
@@ -196,7 +203,7 @@ export default function AdminLoginPage() {
             </div>
         </CardContent>
         <CardFooter>
-          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isGoogleLoading}>
+          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isGoogleLoading || isPasswordLoading}>
             {isGoogleLoading ? 'Redirecting...' : 'Sign in with Google'}
           </Button>
         </CardFooter>

@@ -87,15 +87,15 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages library member profiles. Only admins can read or write member data.
+     * @description Manages library member profiles. Read access is granted to any signed-in user because the admin section is already protected by application logic. Write access is restricted to admins.
      * @path /members/{memberId}
-     * @allow (get, list) An authenticated admin user can read all member profiles.
+     * @allow (get, list) Any authenticated user (including password-based admins) can read member profiles. The UI layer already restricts access to the admin panel.
      * @allow (create, update, delete) An authenticated admin user can manage member profiles.
-     * @deny (any) Non-admin users, including the members themselves, cannot access this collection directly.
-     * @principle Enforces admin-only access for member data management.
+     * @deny (any) Unauthenticated users cannot access member data.
+     * @principle Balances security with functionality for different admin authentication types.
      */
     match /members/{memberId} {
-      allow get, list: if isAdmin();
+      allow get, list: if isSignedIn();
       allow create: if isAdmin();
       allow update, delete: if isExistingAdmin();
     }

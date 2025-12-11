@@ -7,6 +7,8 @@ import { Button } from '../ui/button';
 import { LayoutDashboard, Book, Users, History, Settings, LogOut, HelpCircle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
 
 const navItems = [
   { href: '/admin/dashboard', icon: RefreshCw, label: 'Dashboard' },
@@ -20,9 +22,12 @@ export function AdminSidebar() {
   const { isMobile } = useSidebar();
   const pathname = usePathname();
   const router = useRouter();
+  const auth = useAuth();
 
   const handleLogout = async () => {
-    // In a real app, you would call your auth sign-out method here
+    if (auth) {
+      await signOut(auth);
+    }
     router.push('/');
   };
 

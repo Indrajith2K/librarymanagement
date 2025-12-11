@@ -1,5 +1,6 @@
 'use client';
 
+import { useTheme } from 'next-themes';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +11,8 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 
 export default function SettingsPage() {
+  const { theme, setTheme } = useTheme();
+
   return (
     <AdminLayout>
       <div className="space-y-6 max-w-4xl mx-auto">
@@ -69,7 +72,7 @@ export default function SettingsPage() {
                         <Label>Theme</Label>
                         <p className="text-sm text-muted-foreground">Choose the appearance of the application.</p>
                     </div>
-                    <Select defaultValue="light">
+                    <Select value={theme} onValueChange={setTheme}>
                         <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Select theme" />
                         </SelectTrigger>

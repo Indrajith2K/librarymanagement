@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Disable caching to prevent stale configurations
+  cacheHandler: undefined,
+  cacheMaxMemorySize: 0,
   images: {
     remotePatterns: [
       {

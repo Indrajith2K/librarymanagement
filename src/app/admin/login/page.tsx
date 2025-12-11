@@ -13,31 +13,39 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const auth = useAuth();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [userUid, setUserUid] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true); // Start with loading true
 
   useEffect(() => {
-    if (!auth) return;
+    if (!auth) {
+      setIsLoading(false);
+      return;
+    };
 
-    setIsLoading(true);
     getRedirectResult(auth)
       .then((result) => {
         if (result) {
           const user = result.user;
+          // Check if the signed-in user is the designated admin
           if (user.email === '23di21@psgpolytech.ac.in') {
-            setUserUid(user.uid);
             toast({
-              title: "Login Successful. UID captured.",
-              description: "Please copy the UID displayed on the screen for the next step.",
+              title: "Login Successful",
+              description: "Redirecting to the admin dashboard...",
             });
+            // Redirect directly to the dashboard
+            router.push('/admin/dashboard');
           } else {
+            // If not the admin, sign them out and show an error
             signOut(auth);
             toast({
               variant: "destructive",
               title: "Access Denied",
               description: "You are not authorized to access this admin panel.",
             });
+            setIsLoading(false);
           }
+        } else {
+            // No redirect result, so just stop loading
+            setIsLoading(false);
         }
       })
       .catch((error) => {
@@ -47,11 +55,9 @@ export default function AdminLoginPage() {
           title: "Login Failed",
           description: error.message || "An unexpected error occurred during sign-in.",
         });
-      })
-      .finally(() => {
         setIsLoading(false);
       });
-  }, [auth, toast]);
+  }, [auth, router, toast]);
 
   const handleGoogleSignIn = async () => {
     if (!auth) {
@@ -65,43 +71,27 @@ export default function AdminLoginPage() {
 
     setIsLoading(true);
     const provider = new GoogleAuthProvider();
-    // We use signInWithRedirect instead of signInWithPopup
     await signInWithRedirect(auth, provider);
   };
-
-  const proceedToDashboard = () => {
-    router.push('/admin/dashboard');
-  }
-
-  if (userUid) {
-    return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-            <Card className="w-full max-w-md shadow-lg">
-                <CardHeader>
-                    <CardTitle>Admin Setup: Step 2</CardTitle>
-                    <CardDescription>
-                        Copy your User ID (UID) below and add it to your Firestore database.
-                    </CardDescription>
+  
+  // While checking for redirect result, show a loading state
+  if (isLoading) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center bg-background">
+            <Card className="w-full max-w-sm shadow-lg">
+                <CardHeader className="items-center text-center">
+                    <UserCircle2 className="h-20 w-20 text-muted-foreground animate-pulse" />
+                    <CardTitle className="mt-4 text-2xl">Verifying...</CardTitle>
+                    <CardDescription>Please wait while we check your credentials.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                        Your unique Firebase User ID is:
-                    </p>
-                    <div className="p-3 rounded-md bg-muted font-mono text-sm break-all">
-                        {userUid}
+                <CardContent>
+                    <div className="flex justify-center">
+                        {/* You can add a spinner here if you like */}
                     </div>
-                    <p className="text-sm text-muted-foreground pt-4">
-                        Now, go to your Firebase project's Firestore Database, create a collection named <strong>adminUsers</strong>, and add a document with this UID as the Document ID. Inside that document, add a field named <strong>role</strong> with the value <strong>Super Admin</strong>.
-                    </p>
                 </CardContent>
-                <CardFooter>
-                    <Button className="w-full" onClick={proceedToDashboard}>
-                        I have saved my UID, proceed to Dashboard
-                    </Button>
-                </CardFooter>
             </Card>
         </div>
-    );
+      );
   }
 
   return (

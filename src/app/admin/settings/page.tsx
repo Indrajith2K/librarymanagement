@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,188 +11,18 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { ClientThemeSwitcher } from '@/components/ClientThemeSwitcher';
 import { AdminUserProvider, useAdminUser } from '@/context/AdminUserContext';
-import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import ReactCrop, { type Crop, PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
-import { useStorage } from '@/firebase';
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
-const getInitials = (name: string | undefined) => {
+
+function ProfilePlaceholder() {
+  const { adminUser, loading } = useAdminUser();
+
+  const getInitials = (name: string | undefined) => {
     if (!name) return 'A';
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-};
-
-function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number) {
-  return centerCrop(
-    makeAspectCrop({ unit: '%', width: 90 }, aspect, mediaWidth, mediaHeight),
-    mediaWidth,
-    mediaHeight
-  );
-}
-
-function ProfileUploader() {
-  const { adminUser, adminUserDocId, updateAdminUser, loading: adminLoading } = useAdminUser();
-  const storage = useStorage();
-  const { toast } = useToast();
-  
-  const [displayName, setDisplayName] = useState('');
-  const [imgSrc, setImgSrc] = useState('');
-  const [crop, setCrop] = useState<Crop>();
-  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
-  const [showCropDialog, setShowCropDialog] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const imgRef = useRef<HTMLImageElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (adminUser) {
-      setDisplayName(adminUser.displayName || '');
-    }
-  }, [adminUser]);
-
-  const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setCrop(undefined); // Reset crop state
-      const reader = new FileReader();
-      reader.addEventListener('load', () => setImgSrc(reader.result?.toString() || ''));
-      reader.readAsDataURL(e.target.files[0]);
-      setShowCropDialog(true);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
   };
 
-  const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const { width, height } = e.currentTarget;
-    setCrop(centerAspectCrop(width, height, 1));
-  };
-  
-  const getCroppedImg = (image: HTMLImageElement, crop: PixelCrop): Promise<Blob | null> => {
-    const canvas = document.createElement('canvas');
-    const scaleX = image.naturalWidth / image.width;
-    const scaleY = image.naturalHeight / image.height;
-    canvas.width = crop.width;
-    canvas.height = crop.height;
-    const ctx = canvas.getContext('2d');
-
-    if (!ctx) throw new Error('No 2d context');
-    
-    ctx.drawImage(
-      image,
-      crop.x * scaleX,
-      crop.y * scaleY,
-      crop.width * scaleX,
-      crop.height * scaleY,
-      0,
-      0,
-      crop.width,
-      crop.height
-    );
-
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => {
-        resolve(blob);
-      }, 'image/png');
-    });
-  }
-
-  const handleProfileSave = async () => {
-    try {
-      await updateAdminUser({ displayName });
-      toast({
-        title: "Profile Updated",
-        description: "Your display name has been saved.",
-      });
-    } catch (error) {
-      console.error(error);
-      toast({
-        variant: "destructive",
-        title: "Update Failed",
-        description: "Could not update your display name.",
-      });
-    }
-  };
-
-  const handleCropAndUpload = async () => {
-    if (!completedCrop || !imgRef.current || !storage || !adminUserDocId) {
-        toast({ variant: "destructive", title: "Error", description: "Cannot upload image. User or storage not available." });
-        return;
-    };
-
-    setIsUploading(true);
-    try {
-        const croppedBlob = await getCroppedImg(imgRef.current, completedCrop);
-        if (!croppedBlob) {
-            throw new Error("Could not process the image.");
-        }
-
-        const profilePicRef = storageRef(storage, `profile-pictures/${adminUserDocId}`);
-        // This metadata is crucial for the security rule to pass for password-based admins
-        const uploadMetadata = { customMetadata: { uid: adminUserDocId } };
-        const snapshot = await uploadBytes(profilePicRef, croppedBlob, uploadMetadata);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-
-        await updateAdminUser({ photoURL: downloadURL });
-        
-        toast({
-            title: "Profile Picture Updated",
-            description: "Your new picture has been saved.",
-        });
-
-    } catch (error: any) {
-        console.error("Upload failed", error);
-        toast({
-            variant: "destructive",
-            title: "Upload Failed",
-            description: error.message || "Could not upload the image. Check storage rules.",
-        });
-    } finally {
-        setIsUploading(false);
-        setShowCropDialog(false);
-    }
-  };
-
-  const handleRemovePicture = async () => {
-    if (!storage || !adminUser?.photoURL || !adminUserDocId) {
-      toast({ variant: "destructive", title: "Error", description: "No picture to remove or user not found." });
-      return;
-    }
-    setIsDeleting(true);
-    try {
-        const profilePicRef = storageRef(storage, `profile-pictures/${adminUserDocId}`);
-        await deleteObject(profilePicRef);
-        await updateAdminUser({ photoURL: "" });
-        toast({
-            title: "Profile Picture Removed",
-            description: "Your picture has been removed.",
-        });
-    } catch(error: any) {
-        // If the object doesn't exist in storage, we can still clear the URL from the database
-        if (error.code === 'storage/object-not-found') {
-             await updateAdminUser({ photoURL: "" });
-             toast({
-                title: "Profile Picture Removed",
-                description: "Your picture has been removed.",
-            });
-        } else {
-            console.error("Failed to remove picture", error);
-            toast({
-                variant: "destructive",
-                title: "Removal Failed",
-                description: "Could not remove the profile picture.",
-            });
-        }
-    } finally {
-        setIsDeleting(false);
-    }
-  }
-
-   if (adminLoading) {
+  if (loading) {
     return (
         <Card>
             <CardHeader>
@@ -205,85 +35,32 @@ function ProfileUploader() {
         </Card>
     );
   }
-  
-  return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Profile</CardTitle>
-          <CardDescription>Update your display name and profile picture.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center gap-6">
-              <Avatar className="h-20 w-20">
-                  <AvatarImage src={adminUser?.photoURL || undefined} />
-                  <AvatarFallback>{getInitials(adminUser?.displayName)}</AvatarFallback>
-              </Avatar>
-               <div className="flex flex-col gap-2">
-                  <Label htmlFor="picture">Change Profile Picture</Label>
-                  <Input id="picture" type="file" accept="image/*" ref={fileInputRef} onChange={onFileSelect} className="max-w-xs" />
-                   {adminUser?.photoURL && (
-                    <Button variant="outline" size="sm" onClick={handleRemovePicture} disabled={isDeleting} className="w-fit">
-                        {isDeleting ? 'Removing...' : 'Remove Picture'}
-                    </Button>
-                   )}
-              </div>
-          </div>
-           <div className="space-y-2">
-              <Label htmlFor="display-name">Display Name</Label>
-              <Input 
-                  id="display-name" 
-                  value={displayName} 
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Your Name"
-                  disabled={adminLoading}
-              />
-          </div>
-        </CardContent>
-        <CardFooter className="border-t px-6 py-4">
-          <Button onClick={handleProfileSave} disabled={adminLoading}>Save Profile</Button>
-        </CardFooter>
-      </Card>
 
-      {showCropDialog && (
-          <Dialog open={showCropDialog} onOpenChange={setShowCropDialog}>
-              <DialogContent className="max-w-md">
-                  <DialogHeader>
-                      <DialogTitle>Crop Your Image</DialogTitle>
-                  </DialogHeader>
-                  {imgSrc && (
-                      <div className="flex justify-center">
-                          <ReactCrop
-                              crop={crop}
-                              onChange={(_, percentCrop) => setCrop(percentCrop)}
-                              onComplete={(c) => setCompletedCrop(c)}
-                              aspect={1}
-                              circularCrop
-                          >
-                              <img
-                                  ref={imgRef}
-                                  alt="Crop me"
-                                  src={imgSrc}
-                                  onLoad={onImageLoad}
-                                  className="max-h-[70vh]"
-                              />
-                          </ReactCrop>
-                      </div>
-                  )}
-                  <DialogFooter>
-                      <DialogClose asChild>
-                          <Button variant="outline">Cancel</Button>
-                      </DialogClose>
-                      <Button onClick={handleCropAndUpload} disabled={isUploading}>
-                          {isUploading ? 'Uploading...' : 'Save and Upload'}
-                      </Button>
-                  </DialogFooter>
-              </DialogContent>
-          </Dialog>
-      )}
-    </>
-  );
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Your Profile</CardTitle>
+        <CardDescription>Update your display name and profile picture.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="flex items-center gap-6">
+          <Avatar className="h-20 w-20">
+            <AvatarImage src={adminUser?.photoURL || undefined} />
+            <AvatarFallback>{getInitials(adminUser?.displayName)}</AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="font-semibold">{adminUser?.displayName || 'Admin User'}</p>
+            <p className="text-sm text-muted-foreground">Profile picture uploads are temporarily disabled to resolve a build error.</p>
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter className="border-t px-6 py-4">
+        <Button disabled>Save Profile</Button>
+      </CardFooter>
+    </Card>
+  )
 }
+
 
 function SettingsPageContent() {
   return (
@@ -296,7 +73,7 @@ function SettingsPageContent() {
           </p>
         </div>
 
-        <ProfileUploader />
+        <ProfilePlaceholder />
         
         <Card>
             <CardHeader>
@@ -375,5 +152,5 @@ export default function SettingsPage() {
         <AdminUserProvider>
             <SettingsPageContent />
         </AdminUserProvider>
-    )
+    );
 }

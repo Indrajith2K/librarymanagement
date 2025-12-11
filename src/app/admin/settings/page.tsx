@@ -31,8 +31,9 @@ function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: numbe
 // A helper component to ensure auth is loaded before rendering the uploader
 function ProfileSettings() {
   const { user: authUser, loading: authLoading } = useUser();
+  const { adminUser, updateAdminUser, loading: adminLoading } = useAdminUser();
   
-  if (authLoading) {
+  if (authLoading || adminLoading) {
     return (
         <Card>
             <CardHeader>
@@ -46,9 +47,9 @@ function ProfileSettings() {
     );
   }
 
-  // We require an authenticated Firebase Auth user to proceed with Storage operations
+  // We require an authenticated Firebase Auth user to proceed with Storage operations.
   // This is because password-based sessions are not "authenticated" in a way
-  // that Firebase Storage security rules can easily verify.
+  // that Firebase Storage security rules can verify.
   if (!authUser) {
       return (
         <Card>
@@ -56,11 +57,28 @@ function ProfileSettings() {
                 <CardTitle>Your Profile</CardTitle>
                 <CardDescription>Update your display name and profile picture.</CardDescription>
             </CardHeader>
-            <CardContent>
-                <p className="text-sm text-muted-foreground">
-                    Profile picture management is only available when logged in with a Google account.
-                </p>
+            <CardContent className="space-y-4">
+                 <div className="flex items-center gap-6">
+                    <Avatar className="h-20 w-20">
+                        <AvatarImage src={adminUser?.photoURL || undefined} />
+                        <AvatarFallback>{getInitials(adminUser?.displayName)}</AvatarFallback>
+                    </Avatar>
+                    <p className="text-sm text-muted-foreground">
+                        Profile picture management is only available when logged in with a Google account.
+                    </p>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="display-name">Display Name</Label>
+                    <Input 
+                        id="display-name" 
+                        value={adminUser?.displayName || ''}
+                        disabled={true}
+                    />
+                </div>
             </CardContent>
+            <CardFooter className="border-t px-6 py-4">
+                <Button disabled>Save Profile</Button>
+            </CardFooter>
         </Card>
       )
   }
@@ -308,7 +326,6 @@ function ProfileUploader({ authUser }: { authUser: FirebaseAuthUser }) {
   );
 }
 
-
 function SettingsPageContent() {
   return (
     <AdminLayout>
@@ -401,3 +418,5 @@ export default function SettingsPage() {
         </AdminUserProvider>
     )
 }
+
+    

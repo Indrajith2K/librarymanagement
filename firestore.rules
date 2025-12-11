@@ -89,12 +89,14 @@ service cloud.firestore {
     /**
      * @description Manages library member profiles. Only admins can read or write member data.
      * @path /members/{memberId}
-     * @allow (get, list, create, update, delete) An authenticated admin user can manage all member profiles.
+     * @allow (get, list) An authenticated admin user can read all member profiles.
+     * @allow (create, update, delete) An authenticated admin user can manage member profiles.
      * @deny (any) Non-admin users, including the members themselves, cannot access this collection directly.
      * @principle Enforces admin-only access for member data management.
      */
     match /members/{memberId} {
-      allow get, list, create: if isAdmin();
+      allow get, list: if isAdmin();
+      allow create: if isAdmin();
       allow update, delete: if isExistingAdmin();
     }
 
@@ -152,7 +154,7 @@ service cloud.firestore {
      * @path /reservations/{reservationId}
      * @allow (get, list, create, update, delete) An authenticated admin user can manage all reservation records.
      * @deny (any) Any user who is not a registered admin cannot access reservation data.
-     * @principle Enforces admin-only access for managing book reservation queues.
+     axprinciple Enforces admin-only access for managing book reservation queues.
      */
     match /reservations/{reservationId} {
       allow get, list, create: if isAdmin();
@@ -237,5 +239,3 @@ service firebase.storage {
     }
   }
 }
-
-    

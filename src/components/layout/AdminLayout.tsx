@@ -8,7 +8,6 @@ import { AdminUserProvider } from '@/context/AdminUserContext';
 export function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
-      <AdminUserProvider>
         <div className="flex min-h-screen bg-background">
           <div className="hidden md:block">
               <AdminSidebar />
@@ -20,7 +19,6 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             </main>
           </div>
         </div>
-      </AdminUserProvider>
     </SidebarProvider>
   );
 }

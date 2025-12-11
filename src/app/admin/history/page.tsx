@@ -3,6 +3,7 @@
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AdminUserProvider } from '@/context/AdminUserContext';
 
 const logs = [
     { logId: 'LOG-001', bookTitle: 'Ancestor Trouble', memberName: 'Alex Ray', action: 'Issued', date: '2024-07-28 10:15 AM' },
@@ -12,7 +13,7 @@ const logs = [
     { logId: 'LOG-005', bookTitle: 'The Great Gatsby', memberName: 'Alex Ray', action: 'Returned', date: '2024-07-25 05:45 PM' },
 ];
 
-export default function HistoryPage() {
+function HistoryPageContent() {
   return (
     <AdminLayout>
         <div className="space-y-6">
@@ -56,4 +57,13 @@ export default function HistoryPage() {
         </div>
     </AdminLayout>
   );
+}
+
+
+export default function HistoryPage() {
+    return (
+        <AdminUserProvider>
+            <HistoryPageContent />
+        </AdminUserProvider>
+    )
 }

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MoreHorizontal, Search, UserPlus } from 'lucide-react';
+import { AdminUserProvider } from '@/context/AdminUserContext';
 
 
 const users = [
@@ -18,7 +19,7 @@ const users = [
   { id: '12035', name: 'Olivia Brown', booksIssued: 9, department: 'Marketing', rfid: 'RFID_F131' },
 ];
 
-export default function MembersPage() {
+function MembersPageContent() {
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -80,4 +81,12 @@ export default function MembersPage() {
       </div>
     </AdminLayout>
   );
+}
+
+export default function MembersPage() {
+    return (
+        <AdminUserProvider>
+            <MembersPageContent />
+        </AdminUserProvider>
+    )
 }

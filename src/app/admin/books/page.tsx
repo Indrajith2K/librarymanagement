@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AdminUserProvider } from '@/context/AdminUserContext';
 import { BookUp, MoreHorizontal, Search } from 'lucide-react';
 
 const books = [
@@ -17,7 +18,7 @@ const books = [
   { id: '#D-11121-03', title: '1984', author: 'George Orwell', available: 0, status: 'Issued' },
 ];
 
-export default function BooksPage() {
+function BooksPageContent() {
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -77,4 +78,12 @@ export default function BooksPage() {
       </div>
     </AdminLayout>
   );
+}
+
+export default function BooksPage() {
+    return (
+        <AdminUserProvider>
+            <BooksPageContent />
+        </AdminUserProvider>
+    )
 }

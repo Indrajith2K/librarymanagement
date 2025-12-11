@@ -10,32 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserPlus, BookUp, MoreHorizontal, Users2, Library, BookX } from "lucide-react";
 import Image from 'next/image';
-import { useAdminUser } from '@/context/AdminUserContext';
+import { useAdminUser, AdminUserProvider } from '@/context/AdminUserContext';
 
-const users = [
-  { id: '10021', name: 'Alex Ray', booksIssued: 12, department: 'Psychology', avatar: '/avatars/01.png' },
-  { id: '12034', name: 'Sophia', booksIssued: 7, department: 'Business', avatar: '/avatars/02.png' },
-  { id: '22987', name: 'Jhon', booksIssued: 17, department: 'Computer Science', avatar: '/avatars/03.png' },
-  { id: '53272', name: 'Rose', booksIssued: 25, department: 'Pharmacy', avatar: '/avatars/04.png' },
-];
-
-const books = [
-  { id: '#B-10021-30', title: 'Ancestor Trouble', author: 'Maud Newton', available: 30 },
-  { id: '#B-32521-31', title: 'Life is Everywhere', author: 'Lucy Ives', available: 23 },
-  { id: '#G-95501-31', title: 'Stroller', author: 'Amanda Parrish', available: 90 },
-  { id: '#R-773521-67', title: 'The Secret Syllabus', author: 'Terence C. Burnhum', available: 6 },
-];
-
-const topChoices = [
-    { title: 'The Critique of Pure Reason', author: 'Immanuel Kant', imageUrl: 'https://picsum.photos/seed/critique/200/300', imageHint: 'philosophy book' },
-    { title: 'Stroller', author: 'Amanda Parrish Morgan', imageUrl: 'https://picsum.photos/seed/stroller/200/300', imageHint: 'modern novel' },
-    { title: 'The Design of Everyday Things', author: 'Don Norman', imageUrl: 'https://picsum.photos/seed/designdaily/200/300', imageHint: 'design book' },
-    { title: 'Lean UX', author: 'Jeff Gothelf', imageUrl: 'https://picsum.photos/seed/leanux/200/300', imageHint: 'tech book' },
-    { title: 'The Republic', author: 'Plato', imageUrl: 'https://picsum.photos/seed/republic/200/300', imageHint: 'classic book' },
-    { title: 'Ancestor Trouble', author: 'Maud Newton', imageUrl: 'https://picsum.photos/seed/ancestor/200/300', imageHint: 'family history' },
-];
-
-export default function AdminDashboardPage() {
+function AdminDashboardContent() {
   const { user, loading: authLoading } = useUser();
   const { adminUser, loading: adminUserLoading } = useAdminUser();
   const router = useRouter();
@@ -74,6 +51,29 @@ export default function AdminDashboardPage() {
         </div>
     );
   }
+  
+  const users = [
+    { id: '10021', name: 'Alex Ray', booksIssued: 12, department: 'Psychology', avatar: '/avatars/01.png' },
+    { id: '12034', name: 'Sophia', booksIssued: 7, department: 'Business', avatar: '/avatars/02.png' },
+    { id: '22987', name: 'Jhon', booksIssued: 17, department: 'Computer Science', avatar: '/avatars/03.png' },
+    { id: '53272', name: 'Rose', booksIssued: 25, department: 'Pharmacy', avatar: '/avatars/04.png' },
+  ];
+  
+  const books = [
+    { id: '#B-10021-30', title: 'Ancestor Trouble', author: 'Maud Newton', available: 30 },
+    { id: '#B-32521-31', title: 'Life is Everywhere', author: 'Lucy Ives', available: 23 },
+    { id: '#G-95501-31', title: 'Stroller', author: 'Amanda Parrish', available: 90 },
+    { id: '#R-773521-67', title: 'The Secret Syllabus', author: 'Terence C. Burnhum', available: 6 },
+  ];
+  
+  const topChoices = [
+      { title: 'The Critique of Pure Reason', author: 'Immanuel Kant', imageUrl: 'https://picsum.photos/seed/critique/200/300', imageHint: 'philosophy book' },
+      { title: 'Stroller', author: 'Amanda Parrish Morgan', imageUrl: 'https://picsum.photos/seed/stroller/200/300', imageHint: 'modern novel' },
+      { title: 'The Design of Everyday Things', author: 'Don Norman', imageUrl: 'https://picsum.photos/seed/designdaily/200/300', imageHint: 'design book' },
+      { title: 'Lean UX', author: 'Jeff Gothelf', imageUrl: 'https://picsum.photos/seed/leanux/200/300', imageHint: 'tech book' },
+      { title: 'The Republic', author: 'Plato', imageUrl: 'https://picsum.photos/seed/republic/200/300', imageHint: 'classic book' },
+      { title: 'Ancestor Trouble', author: 'Maud Newton', imageUrl: 'https://picsum.photos/seed/ancestor/200/300', imageHint: 'family history' },
+  ];
 
   return (
     <AdminLayout>
@@ -227,3 +227,13 @@ export default function AdminDashboardPage() {
     </AdminLayout>
   );
 }
+
+
+export default function AdminDashboardPage() {
+  return (
+    <AdminUserProvider>
+      <AdminDashboardContent />
+    </AdminUserProvider>
+  );
+}
+

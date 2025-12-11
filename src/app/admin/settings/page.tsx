@@ -10,57 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { ClientThemeSwitcher } from '@/components/ClientThemeSwitcher';
-import { AdminUserProvider, useAdminUser } from '@/context/AdminUserContext';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-
-
-function ProfilePlaceholder() {
-  const { adminUser, loading } = useAdminUser();
-
-  const getInitials = (name: string | undefined) => {
-    if (!name) return 'A';
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-  };
-
-  if (loading) {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Your Profile</CardTitle>
-                <CardDescription>Update your display name and profile picture.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <p>Loading profile...</p>
-            </CardContent>
-        </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Your Profile</CardTitle>
-        <CardDescription>Update your display name and profile picture.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-center gap-6">
-          <Avatar className="h-20 w-20">
-            <AvatarImage src={adminUser?.photoURL || undefined} />
-            <AvatarFallback>{getInitials(adminUser?.displayName)}</AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="font-semibold">{adminUser?.displayName || 'Admin User'}</p>
-            <p className="text-sm text-muted-foreground">Profile picture uploads are temporarily disabled to resolve a build error.</p>
-          </div>
-        </div>
-      </CardContent>
-      <CardFooter className="border-t px-6 py-4">
-        <Button disabled>Save Profile</Button>
-      </CardFooter>
-    </Card>
-  )
-}
-
+import { AdminUserProvider } from '@/context/AdminUserContext';
 
 function SettingsPageContent() {
   return (
@@ -72,8 +22,6 @@ function SettingsPageContent() {
             Manage your library's settings and preferences.
           </p>
         </div>
-
-        <ProfilePlaceholder />
         
         <Card>
             <CardHeader>

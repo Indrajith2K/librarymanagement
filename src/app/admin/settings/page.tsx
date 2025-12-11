@@ -28,6 +28,11 @@ function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: numbe
   );
 }
 
+const getInitials = (name: string | undefined) => {
+    if (!name) return 'A';
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+};
+
 // A helper component to ensure auth is loaded before rendering the uploader
 function ProfileSettings() {
   const { user: authUser, loading: authLoading } = useUser();
@@ -242,11 +247,6 @@ function ProfileUploader({ authUser }: { authUser: FirebaseAuthUser }) {
     }
   }
   
-  const getInitials = (name: string | undefined) => {
-    if (!name) return 'A';
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-  }
-
   return (
     <>
       <Card>

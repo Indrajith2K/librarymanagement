@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { UserCircle2 } from "lucide-react";
 import { useAuth } from "@/firebase";
-import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -15,6 +15,43 @@ export default function AdminLoginPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [userUid, setUserUid] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!auth) return;
+
+    setIsLoading(true);
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result) {
+          const user = result.user;
+          if (user.email === '23di21@psgpolytech.ac.in') {
+            setUserUid(user.uid);
+            toast({
+              title: "Login Successful. UID captured.",
+              description: "Please copy the UID displayed on the screen for the next step.",
+            });
+          } else {
+            signOut(auth);
+            toast({
+              variant: "destructive",
+              title: "Access Denied",
+              description: "You are not authorized to access this admin panel.",
+            });
+          }
+        }
+      })
+      .catch((error) => {
+        console.error("Google Sign-In Redirect Error: ", error);
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: error.message || "An unexpected error occurred during sign-in.",
+        });
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [auth, toast]);
 
   const handleGoogleSignIn = async () => {
     if (!auth) {
@@ -28,38 +65,8 @@ export default function AdminLoginPage() {
 
     setIsLoading(true);
     const provider = new GoogleAuthProvider();
-
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-
-      if (user.email === '23di21@psgpolytech.ac.in') {
-        // Temporarily display the UID for setup
-        setUserUid(user.uid);
-        toast({
-          title: "Login Successful. UID captured.",
-          description: "Please copy the UID displayed on the screen for the next step.",
-        });
-        // We won't redirect immediately, so you can copy the UID.
-        // router.push('/admin/dashboard');
-      } else {
-        await signOut(auth);
-        toast({
-          variant: "destructive",
-          title: "Access Denied",
-          description: "You are not authorized to access this admin panel.",
-        });
-      }
-    } catch (error: any) {
-      console.error("Google Sign-In Error: ", error);
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: error.message || "An unexpected error occurred during sign-in.",
-      });
-    } finally {
-        setIsLoading(false);
-    }
+    // We use signInWithRedirect instead of signInWithPopup
+    await signInWithRedirect(auth, provider);
   };
 
   const proceedToDashboard = () => {

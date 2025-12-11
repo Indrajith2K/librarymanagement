@@ -2,7 +2,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 
 interface AdminUser {
@@ -11,11 +11,14 @@ interface AdminUser {
     role?: string;
     displayName?: string;
     staffId?: string;
+    photoURL?: string;
 }
 
 interface AdminUserContextType {
     adminUser: AdminUser | null;
+    adminUserDocId: string | null;
     loading: boolean;
+    updateAdminUser: (data: Partial<AdminUser>) => Promise<void>;
 }
 
 const AdminUserContext = createContext<AdminUserContextType | undefined>(undefined);
@@ -24,6 +27,7 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
     const firestore = useFirestore();
     const { user: authUser, loading: authLoading } = useUser();
     const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+    const [adminUserDocId, setAdminUserDocId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -47,6 +51,7 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
                         q = query(adminUsersRef, where('staffId', '==', staffId));
                     } else {
                         setAdminUser(null);
+                        setAdminUserDocId(null);
                         setLoading(false);
                         return;
                     }
@@ -56,12 +61,15 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
                 if (!querySnapshot.empty) {
                     const userDoc = querySnapshot.docs[0];
                     setAdminUser(userDoc.data() as AdminUser);
+                    setAdminUserDocId(userDoc.id);
                 } else {
                     setAdminUser(null);
+                    setAdminUserDocId(null);
                 }
             } catch (error) {
                 console.error("Failed to fetch admin user data:", error);
                 setAdminUser(null);
+                setAdminUserDocId(null);
             } finally {
                 setLoading(false);
             }
@@ -71,8 +79,18 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
             fetchAdminUser();
         }
     }, [firestore, authUser, authLoading]);
+    
+    const updateAdminUser = async (data: Partial<AdminUser>) => {
+        if (!firestore || !adminUserDocId) {
+            throw new Error("Firestore not available or user not found.");
+        }
+        const userDocRef = doc(firestore, 'adminusers', adminUserDocId);
+        await updateDoc(userDocRef, data);
+        setAdminUser(prevUser => prevUser ? { ...prevUser, ...data } : null);
+    };
 
-    const value = { adminUser, loading: authLoading || loading };
+
+    const value = { adminUser, adminUserDocId, loading: authLoading || loading, updateAdminUser };
 
     return (
         <AdminUserContext.Provider value={value}>

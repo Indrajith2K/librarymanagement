@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -53,7 +54,7 @@ export function AdminHeader() {
             <span className="sr-only">Toggle notifications</span>
         </Button>
         <Avatar className="h-9 w-9">
-            <AvatarImage src={`https://i.pravatar.cc/150?u=${adminUser?.staffId || adminUser?.email}`} />
+            <AvatarImage src={adminUser?.photoURL || `https://i.pravatar.cc/150?u=${adminUser?.staffId || adminUser?.email}`} />
             <AvatarFallback>{getInitials(adminUser?.displayName)}</AvatarFallback>
         </Avatar>
         <div>

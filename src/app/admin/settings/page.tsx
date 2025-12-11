@@ -1,5 +1,7 @@
+
 'use client';
 
+import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,18 +10,80 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { ClientThemeSwitcher } from '@/components/ClientThemeSwitcher';
-import { AdminUserProvider } from '@/context/AdminUserContext';
+import { AdminUserProvider, useAdminUser } from '@/context/AdminUserContext';
+import { useToast } from '@/hooks/use-toast';
 
 function SettingsPageContent() {
+  const { adminUser, updateAdminUser, loading } = useAdminUser();
+  const { toast } = useToast();
+  const [photoURL, setPhotoURL] = useState('');
+  const [displayName, setDisplayName] = useState('');
+
+  useEffect(() => {
+    if (adminUser) {
+      setPhotoURL(adminUser.photoURL || '');
+      setDisplayName(adminUser.displayName || '');
+    }
+  }, [adminUser]);
+
+  const handleProfileSave = async () => {
+    try {
+      await updateAdminUser({ photoURL, displayName });
+      toast({
+        title: "Profile Updated",
+        description: "Your profile information has been saved.",
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: "Could not update your profile. Please try again.",
+      });
+    }
+  };
+
   return (
     <AdminLayout>
-      <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="space-y-8 max-w-4xl mx-auto">
         <div>
           <h1 className="text-2xl font-bold">Settings</h1>
           <p className="text-muted-foreground">
             Manage your library's settings and preferences.
           </p>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Profile</CardTitle>
+            <CardDescription>Update your display name and profile picture.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             <div className="space-y-2">
+                <Label htmlFor="display-name">Display Name</Label>
+                <Input 
+                    id="display-name" 
+                    value={displayName} 
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="Your Name"
+                    disabled={loading}
+                />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="photo-url">Profile Picture URL</Label>
+              <Input
+                id="photo-url"
+                value={photoURL}
+                onChange={(e) => setPhotoURL(e.target.value)}
+                placeholder="https://example.com/your-image.png"
+                disabled={loading}
+              />
+            </div>
+          </CardContent>
+          <CardFooter className="border-t px-6 py-4">
+            <Button onClick={handleProfileSave} disabled={loading}>Save Profile</Button>
+          </CardFooter>
+        </Card>
 
         <Card>
             <CardHeader>

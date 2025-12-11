@@ -1,3 +1,4 @@
+
 {
     "entities": {
         "Book": {
@@ -144,7 +145,8 @@
                 "role": { "type": "string", "enum": ["Super Admin", "Librarian", "Assistant"] },
                 "displayName": { "type": "string" },
                 "staffId": { "type": "string", "description": "Unique Staff ID for password-based login." },
-                "password": { "type": "string", "description": "Plaintext password. HIGHLY INSECURE. For demonstration only." }
+                "password": { "type": "string", "description": "Plaintext password. HIGHLY INSECURE. For demonstration only." },
+                "photoURL": { "type": "string", "format": "uri", "description": "URL for the admin's profile picture." }
             },
             "required": ["role"]
         },

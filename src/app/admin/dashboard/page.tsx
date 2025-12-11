@@ -42,8 +42,10 @@ export default function AdminDashboardPage() {
 
 
   useEffect(() => {
-    // If loading is finished and there's no user, redirect to login
-    if (!loading && !user) {
+    const isDummyAdmin = sessionStorage.getItem('dummy_admin') === 'true';
+
+    // If loading is finished and there's no firebase user AND no dummy admin, redirect to login
+    if (!loading && !user && !isDummyAdmin) {
       router.push('/admin/login');
     }
   }, [user, loading, router]);
@@ -54,8 +56,9 @@ export default function AdminDashboardPage() {
     setCurrentTime(date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }));
   }, []);
 
-  // While loading, show a placeholder or a spinner
-  if (loading || !user) {
+  const isLoadingOrNoUser = loading || (!user && sessionStorage.getItem('dummy_admin') !== 'true');
+
+  if (isLoadingOrNoUser) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p>Loading dashboard...</p>

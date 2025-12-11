@@ -25,9 +25,14 @@ export function AdminSidebar() {
   const auth = useAuth();
 
   const handleLogout = async () => {
-    if (auth) {
+    // Clear the dummy admin session flag
+    sessionStorage.removeItem('dummy_admin');
+    
+    if (auth && auth.currentUser) {
       await signOut(auth);
     }
+    
+    // Redirect to the main homepage after logout
     router.push('/');
   };
 

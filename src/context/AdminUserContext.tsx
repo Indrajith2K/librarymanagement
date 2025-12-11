@@ -43,18 +43,17 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
                 const adminUsersRef = collection(firestore, 'adminusers');
                 let q;
 
+                const staffId = sessionStorage.getItem('admin_staff_id');
+
                 if (authUser) {
                     q = query(adminUsersRef, where('email', '==', authUser.email));
+                } else if (staffId) {
+                    q = query(adminUsersRef, where('staffId', '==', staffId));
                 } else {
-                    const staffId = sessionStorage.getItem('admin_staff_id');
-                    if (staffId) {
-                        q = query(adminUsersRef, where('staffId', '==', staffId));
-                    } else {
-                        setAdminUser(null);
-                        setAdminUserDocId(null);
-                        setLoading(false);
-                        return;
-                    }
+                    setAdminUser(null);
+                    setAdminUserDocId(null);
+                    setLoading(false);
+                    return;
                 }
 
                 const querySnapshot = await getDocs(q);
@@ -86,6 +85,7 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
         }
         const userDocRef = doc(firestore, 'adminusers', adminUserDocId);
         await updateDoc(userDocRef, data);
+        // This is the critical fix: update the local state after the db update.
         setAdminUser(prevUser => prevUser ? { ...prevUser, ...data } : null);
     };
 

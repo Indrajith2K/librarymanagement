@@ -1,12 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, Search, UserPlus } from 'lucide-react';
+import { MoreHorizontal, Search, UserPlus, ScanLine } from 'lucide-react';
 import { AdminUserProvider } from '@/context/AdminUserContext';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -44,6 +44,8 @@ function AddMemberForm({ onFinished }: { onFinished: () => void }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
+    const [scannedId, setScannedId] = useState('');
 
     const form = useForm<MemberFormData>({
         resolver: zodResolver(memberSchema),
@@ -55,6 +57,25 @@ function AddMemberForm({ onFinished }: { onFinished: () => void }) {
             isActive: true,
         },
     });
+
+    useEffect(() => {
+        if (!isScanning) return;
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+          if (event.key === 'Enter' && scannedId) {
+            form.setValue('rfidCardId', scannedId);
+            setIsScanning(false);
+            setScannedId('');
+            toast({ title: 'Scan Complete', description: `RFID ${scannedId} captured.` });
+          } else if (event.key.length === 1) {
+            setScannedId(prev => prev + event.key);
+          }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+
+    }, [isScanning, scannedId, form, toast]);
 
     async function onSubmit(values: MemberFormData) {
         if (!firestore) {
@@ -134,10 +155,32 @@ function AddMemberForm({ onFinished }: { onFinished: () => void }) {
                     name="rfidCardId"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>RFID Card ID (Optional)</FormLabel>
-                            <FormControl>
-                                <Input placeholder="e.g. 1234567890" {...field} />
-                            </FormControl>
+                            <FormLabel>RFID Card ID</FormLabel>
+                            <div className="flex items-center gap-2">
+                                <FormControl>
+                                    <Input 
+                                        placeholder={isScanning ? "Scanning..." : "Enter ID or scan"} 
+                                        {...field}
+                                        disabled={isScanning}
+                                    />
+                                </FormControl>
+                                <Button 
+                                    type="button" 
+                                    variant="outline"
+                                    onClick={() => {
+                                        setIsScanning(prev => !prev);
+                                        setScannedId(''); // Reset on toggle
+                                    }}
+                                >
+                                    <ScanLine className="h-4 w-4" />
+                                    <span className="ml-2 hidden sm:inline">{isScanning ? 'Cancel' : 'Scan'}</span>
+                                </Button>
+                            </div>
+                            {isScanning && (
+                                <p className="text-sm text-primary animate-pulse p-2 bg-primary/10 rounded-md">
+                                    Ready to scan. Please present the RFID card...
+                                </p>
+                            )}
                             <FormMessage />
                         </FormItem>
                     )}
@@ -162,9 +205,9 @@ function AddMemberForm({ onFinished }: { onFinished: () => void }) {
                 />
                 <DialogFooter>
                     <DialogClose asChild>
-                        <Button type="button" variant="outline">Cancel</Button>
+                        <Button type="button" variant="outline" onClick={() => setIsScanning(false)}>Cancel</Button>
                     </DialogClose>
-                    <Button type="submit" disabled={isSubmitting}>
+                    <Button type="submit" disabled={isSubmitting || isScanning}>
                         {isSubmitting ? 'Adding...' : 'Add Member'}
                     </Button>
                 </DialogFooter>

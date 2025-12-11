@@ -2,6 +2,7 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { firebaseConfig } from './config';
 
 // This function provides a single, idempotent way to initialize Firebase.
@@ -9,6 +10,7 @@ function initializeFirebase(): {
   firebaseApp: FirebaseApp;
   auth: Auth;
   firestore: Firestore;
+  storage: FirebaseStorage;
 } {
   if (getApps().length) {
     const app = getApp();
@@ -16,14 +18,16 @@ function initializeFirebase(): {
       firebaseApp: app,
       auth: getAuth(app),
       firestore: getFirestore(app),
+      storage: getStorage(app),
     };
   }
   
   const firebaseApp = initializeApp(firebaseConfig);
   const auth = getAuth(firebaseApp);
   const firestore = getFirestore(firebaseApp);
+  const storage = getStorage(firebaseApp);
   
-  return { firebaseApp, auth, firestore };
+  return { firebaseApp, auth, firestore, storage };
 }
 
 export { initializeFirebase };

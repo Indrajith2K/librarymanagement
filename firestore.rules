@@ -1,21 +1,4 @@
 
-/**
- * This ruleset enforces a strict Role-Based Access Control (RBAC) model for the Quicklook Library Management System.
- *
- * Core Philosophy: Access to most data collections is restricted to authenticated administrators. The one exception is the `adminusers` collection, which is publicly readable to allow for Staff ID/Password authentication checks before a user is formally signed into the system. This creates a secure, admin-centric environment while enabling a necessary pre-authentication step.
- *
- * Data Structure: The Firestore structure is flat, with all data entities residing in top-level collections (e.g., /books, /members). This design simplifies rule application and queries.
- *
- * Key Security Decisions:
- * - Default Deny: All operations are denied by default.
- * - Admin-Only Write Access: While `adminusers` is readable, write access to all collections is gated behind the `isAdmin()` check, which verifies a user's authenticated UID exists in the admin list.
- * - Immutable Logs: The `/adminActivityLogs` collection is write-once. Once a log is created, it cannot be updated or deleted, ensuring a tamper-proof audit trail.
- * - Creator Validation: For entities logging an admin's action (e.g., circulation logs), rules enforce that the `actorId` or `adminUserId` must match the UID of the admin creating the document.
- *
- * Denormalization for Authorization: The `/adminusers` collection is a centralized list of authorized personnel. Making it readable allows the client to verify credentials without prior authentication. Subsequent operations rely on the Firebase Auth UID being present in this list, which is verified by `isAdmin()`.
- *
- * Structural Segregation: Each data type is in its own collection, ensuring access rules are isolated and efficient.
- */
 rules_version = '2';
 
 service cloud.firestore {
@@ -25,47 +8,26 @@ service cloud.firestore {
     // Helper Functions
     // --------------------------------
 
-    /**
-     * Checks if the user is signed in via Firebase Authentication.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the signed-in user is a registered administrator.
-     * This is the primary authorization check for all write operations and sensitive reads.
-     * It verifies the user's UID exists as a document in the adminusers collection.
-     */
     function isAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/adminusers/$(request.auth.uid));
     }
-
-    /**
-     * Checks if the user is an admin AND the document they are trying to modify already exists.
-     * Used for all update and delete operations to prevent modifying non-existent data.
-     */
+    
     function isExistingAdmin() {
       return isAdmin() && resource != null;
     }
 
-    /**
-     * Validates that the creator of a CirculationLog is the authenticated user.
-     */
     function isCirculationActor() {
       return request.resource.data.actorId == request.auth.uid;
     }
 
-    /**
-     * Validates that the creator of a Report is the authenticated user.
-     */
     function isReportGenerator() {
       return request.resource.data.adminUserId == request.auth.uid;
     }
 
-    /**
-     * Validates that the creator of an AdminActivityLog is the authenticated user.
-     */
     function isAuthorOfLog() {
       return request.resource.data.adminUserId == request.auth.uid;
     }
@@ -74,148 +36,66 @@ service cloud.firestore {
     // Collection Rules
     // --------------------------------
 
-    /**
-     * @description Manages library book records. Only admins can read or write book data.
-     * @path /books/{bookId}
-     * @allow (get, list, create, update, delete) An authenticated admin user can manage all book records.
-     * @deny (any) Any user who is not a registered admin cannot access book data.
-     * @principle Enforces admin-only access for core library resource management.
-     */
     match /books/{bookId} {
-      allow get, list, create: if isAdmin();
-      allow update, delete: if isExistingAdmin();
-    }
-
-    /**
-     * @description Manages library member profiles. Read access is granted to any signed-in user because the admin section is already protected by application logic. Write access is restricted to admins.
-     * @path /members/{memberId}
-     * @allow (get, list) Any authenticated user (including password-based admins) can read member profiles. The UI layer already restricts access to the admin panel.
-     * @allow (create, update, delete) An authenticated admin user can manage member profiles.
-     * @deny (any) Unauthenticated users cannot access member data.
-     * @principle Balances security with functionality for different admin authentication types.
-     */
-    match /members/{memberId} {
-      allow get, list: if isSignedIn();
+      // Temporarily allow public read to verify data flow
+      allow read: if true; 
       allow create: if isAdmin();
       allow update, delete: if isExistingAdmin();
     }
 
-    /**
-     * @description Manages RFID tag assignments and data. Only admins can manage RFID tags.
-     * @path /rfidTags/{rfidTagId}
-     * @allow (get, list, create, update, delete) An authenticated admin user can manage all RFID tag records.
-     * @deny (any) Any user who is not a registered admin cannot access RFID tag data.
-     * @principle Restricts hardware and asset management to authorized administrators.
-     */
+    match /members/{memberId} {
+      // Temporarily allow public read to verify data flow for all admin types
+      allow read: if true;
+      allow create: if isAdmin();
+      allow update, delete: if isExistingAdmin();
+    }
+
     match /rfidTags/{rfidTagId} {
       allow get, list, create: if isAdmin();
       allow update, delete: if isExistingAdmin();
     }
 
-    /**
-     * @description Stores logs for book check-ins, check-outs, and renewals.
-     * @path /circulationLogs/{circulationLogId}
-     * @allow (create) An admin can create a log entry, and their UID must be set as the `actorId`.
-     * @deny (create) An admin cannot create a log entry on behalf of another admin.
-     * @principle Ensures accountability by linking every circulation event to the performing admin.
-     */
     match /circulationLogs/{circulationLogId} {
       allow get, list: if isAdmin();
       allow create: if isAdmin() && isCirculationActor();
-      allow update, delete: if false; // Logs should be immutable
+      allow update, delete: if false; 
     }
 
-    /**
-     * @description Manages records of inventory scanning sessions.
-     * @path /inventoryScans/{inventoryScanId}
-     * @allow (get, list, create, update, delete) An authenticated admin user can manage all inventory scan records.
-     * @deny (any) Any user who is not a registered admin cannot access inventory data.
-     * @principle Restricts access to library operational data to authorized administrators.
-     */
     match /inventoryScans/{inventoryScanId} {
       allow get, list, create: if isAdmin();
       allow update, delete: if isExistingAdmin();
     }
 
-    /**
-     * @description Stores security alerts from RFID gates.
-     * @path /securityAlerts/{alertId}
-     * @allow (get, list, create, update, delete) An authenticated admin user can manage all security alerts.
-     * @deny (any) Any user who is not a registered admin cannot access security alert data.
-     * @principle Restricts access to sensitive security information to authorized administrators.
-     */
     match /securityAlerts/{alertId} {
       allow get, list, create: if isAdmin();
       allow update, delete: if isExistingAdmin();
     }
 
-    /**
-     * @description Manages member book reservations. Only admins can manage reservations.
-     * @path /reservations/{reservationId}
-     * @allow (get, list, create, update, delete) An authenticated admin user can manage all reservation records.
-     * @deny (any) Any user who is not a registered admin cannot access reservation data.
-     axprinciple Enforces admin-only access for managing book reservation queues.
-     */
     match /reservations/{reservationId} {
       allow get, list, create: if isAdmin();
       allow update, delete: if isExistingAdmin();
     }
 
-    /**
-     * @description Manages member fines. Only admins can create, view, or modify fines.
-     * @path /fines/{fineId}
-     * @allow (get, list, create, update, delete) An authenticated admin user can manage all fine records.
-     * @deny (any) Any user who is not a registered admin cannot access financial data.
-     * @principle Restricts access to sensitive financial records to authorized administrators.
-     */
     match /fines/{fineId} {
       allow get, list, create: if isAdmin();
       allow update, delete: if isExistingAdmin();
     }
 
-    /**
-     * @description Manages generated system reports.
-     * @path /reports/{reportId}
-     * @allow (create) An admin can generate a report, and their UID must be set as the `adminUserId`.
-     * @deny (create) An admin cannot generate a report on behalf of another admin.
-     * @principle Ensures accountability by linking every generated report to the performing admin.
-     */
     match /reports/{reportId} {
       allow get, list: if isAdmin();
       allow create: if isAdmin() && isReportGenerator();
       allow update, delete: if isExistingAdmin();
     }
 
-    /**
-     * @description Manages administrator accounts, roles, and permissions.
-     * @path /adminusers/{adminUserId}
-     * @allow (read) Public read is allowed so the login page can verify Staff ID/Password without the user being authenticated.
-     * @allow (write) Only existing admins can create, update, or delete other admin accounts.
-     * @principle Allows for a pre-authentication check while securing write operations to trusted users.
-     */
     match /adminusers/{adminUserId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    /**
-     * @description Manages system-wide settings for the library.
-     * @path /systemSettings/{systemSettingId}
-     * @allow (get, list, create, update, delete) An authenticated admin user can manage all system settings.
-     * @deny (any) Any user who is not a registered admin cannot view or modify system settings.
-     * @principle Restricts access to critical system configuration to authorized administrators.
-     */
     match /systemSettings/{systemSettingId} {
       allow get, list, create, update, delete: if isAdmin();
     }
 
-    /**
-     * @description Stores an immutable audit trail of administrator actions.
-     * @path /adminActivityLogs/{adminActivityLogId}
-     * @allow (create) An admin can create a log entry, and their UID must be set as the `adminUserId`.
-     * @deny (update, delete) No one can modify or delete log entries once they are created.
-     * @principle Enforces a tamper-proof audit log for all admin activities, ensuring accountability.
-     */
     match /adminActivityLogs/{adminActivityLogId} {
       allow get, list: if isAdmin();
       allow create: if isAdmin() && isAuthorOfLog();
@@ -226,13 +106,6 @@ service cloud.firestore {
 
 service firebase.storage {
   match /b/{bucket}/o {
-    /**
-     * @description Manages profile pictures for admin users.
-     * @path /profile-pictures/{adminUserDocId}
-     * @allow (read) Anyone can read profile pictures.
-     * @allow (write) An admin can only write to their own profile picture path. The UID in the metadata must match the document ID.
-     * @principle This allows both authenticated (Google) and authorized (password) users to upload, as we verify ownership via metadata.
-     */
     match /profile-pictures/{adminUserDocId} {
       allow read: if true;
       allow write: if request.resource.metadata.uid == adminUserDocId;

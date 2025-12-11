@@ -1,24 +1,35 @@
 'use client';
 
+import { useMemo } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AdminUserProvider } from '@/context/AdminUserContext';
 import { BookUp, MoreHorizontal, Search } from 'lucide-react';
+import { AdminUserProvider } from '@/context/AdminUserContext';
+import { useFirestore, useCollection } from '@/firebase';
+import { collection, query } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const books = [
-  { id: '#B-10021-30', title: 'Ancestor Trouble', author: 'Maud Newton', available: 30, status: 'Available' },
-  { id: '#B-32521-31', title: 'Life is Everywhere', author: 'Lucy Ives', available: 23, status: 'Available' },
-  { id: '#G-95501-31', title: 'Stroller', author: 'Amanda Parrish', available: 90, status: 'Available' },
-  { id: '#R-773521-67', title: 'The Secret Syllabus', author: 'Terence C. Burnhum', available: 0, status: 'Issued' },
-  { id: '#A-12345-01', title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', available: 5, status: 'Available' },
-  { id: '#C-67890-02', title: 'To Kill a Mockingbird', author: 'Harper Lee', available: 2, status: 'Available' },
-  { id: '#D-11121-03', title: '1984', author: 'George Orwell', available: 0, status: 'Issued' },
-];
+interface Book {
+  id: string;
+  title: string;
+  author: string;
+  rfidTagId: string;
+  status: 'available' | 'issued' | 'lost' | 'damaged' | 'reserved';
+}
 
 function BooksPageContent() {
+  const firestore = useFirestore();
+
+  const booksQuery = useMemo(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'books'));
+  }, [firestore]);
+
+  const { data: books, loading, error } = useCollection<Book>(booksQuery);
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -44,23 +55,34 @@ function BooksPageContent() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Book ID</TableHead>
+                  <TableHead>RFID Tag ID</TableHead>
                   <TableHead>Title</TableHead>
                   <TableHead>Author</TableHead>
-                  <TableHead>Available Copies</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {books.map((book) => (
+                {loading && Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-8 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-48" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                  </TableRow>
+                ))}
+                {!loading && books?.map((book) => (
                   <TableRow key={book.id}>
-                    <TableCell>{book.id}</TableCell>
+                    <TableCell>{book.rfidTagId || book.id}</TableCell>
                     <TableCell className="font-medium">{book.title}</TableCell>
                     <TableCell>{book.author}</TableCell>
-                    <TableCell>{book.available}</TableCell>
                     <TableCell>
-                        <span className={`px-2 py-1 text-xs rounded-full ${book.status === 'Available' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        <span className={`px-2 py-1 text-xs rounded-full capitalize ${
+                            book.status === 'available' ? 'bg-green-100 text-green-800' 
+                            : book.status === 'issued' ? 'bg-yellow-100 text-yellow-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
                             {book.status}
                         </span>
                     </TableCell>
@@ -73,6 +95,8 @@ function BooksPageContent() {
                 ))}
               </TableBody>
             </Table>
+             {error && <p className="text-red-500 text-center p-4">Error loading books: {error.message}</p>}
+            {!loading && books?.length === 0 && <p className="text-muted-foreground text-center p-4">No books found.</p>}
           </CardContent>
         </Card>
       </div>

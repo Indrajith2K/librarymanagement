@@ -6,10 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, Search, UserPlus, ScanLine } from 'lucide-react';
+import { MoreHorizontal, Search, UserPlus, ScanLine, Trash2 } from 'lucide-react';
 import { AdminUserProvider } from '@/context/AdminUserContext';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, addDoc, serverTimestamp, doc, deleteDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { useForm } from 'react-hook-form';
@@ -19,6 +19,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 
 interface Member {
@@ -218,6 +220,7 @@ function AddMemberForm({ onFinished }: { onFinished: () => void }) {
 
 function MembersPageContent() {
   const firestore = useFirestore();
+  const { toast } = useToast();
   const [isAddMemberOpen, setAddMemberOpen] = useState(false);
 
   const membersQuery = useMemo(() => {
@@ -226,6 +229,21 @@ function MembersPageContent() {
   }, [firestore]);
 
   const { data: members, loading, error } = useCollection<Member>(membersQuery);
+  
+  const handleDeleteMember = async (memberId: string) => {
+    if (!firestore) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not available.' });
+        return;
+    }
+    try {
+        await deleteDoc(doc(firestore, 'members', memberId));
+        toast({ title: 'Success', description: 'Member has been deleted.' });
+    } catch (error: any) {
+        console.error("Error deleting member: ", error);
+        toast({ variant: 'destructive', title: 'Error deleting member', description: error.message });
+    }
+  };
+
 
   return (
     <AdminLayout>
@@ -272,7 +290,7 @@ function MembersPageContent() {
                   <TableHead>Member Type</TableHead>
                   <TableHead>RFID Card ID</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -283,7 +301,7 @@ function MembersPageContent() {
                     <TableCell><Skeleton className="h-6 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                   </TableRow>
                 ))}
                 {!loading && members?.map((member) => (
@@ -299,10 +317,37 @@ function MembersPageContent() {
                         {member.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                    <TableCell className="text-right">
+                       <AlertDialog>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50">
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </AlertDialogTrigger>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                           <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete the member
+                                    and remove their data from our servers.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteMember(member.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </TableCell>
                   </TableRow>
                 ))}

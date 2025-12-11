@@ -6,10 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BookUp, MoreHorizontal, Search, ScanLine } from 'lucide-react';
+import { BookUp, MoreHorizontal, Search, ScanLine, Trash2 } from 'lucide-react';
 import { AdminUserProvider } from '@/context/AdminUserContext';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, addDoc, serverTimestamp, doc, deleteDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { useForm } from 'react-hook-form';
@@ -18,6 +18,8 @@ import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface Book {
   id: string;
@@ -200,6 +202,7 @@ function AddBookForm({ onFinished }: { onFinished: () => void }) {
 
 function BooksPageContent() {
   const firestore = useFirestore();
+  const { toast } = useToast();
   const [isAddBookOpen, setAddBookOpen] = useState(false);
 
   const booksQuery = useMemo(() => {
@@ -208,6 +211,20 @@ function BooksPageContent() {
   }, [firestore]);
 
   const { data: books, loading, error } = useCollection<Book>(booksQuery);
+
+  const handleDeleteBook = async (bookId: string) => {
+    if (!firestore) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not available.' });
+        return;
+    }
+    try {
+        await deleteDoc(doc(firestore, 'books', bookId));
+        toast({ title: 'Success', description: 'Book has been deleted.' });
+    } catch (error: any) {
+        console.error("Error deleting book: ", error);
+        toast({ variant: 'destructive', title: 'Error deleting book', description: error.message });
+    }
+  };
 
   return (
     <AdminLayout>
@@ -253,7 +270,7 @@ function BooksPageContent() {
                   <TableHead>Title</TableHead>
                   <TableHead>Author</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -263,7 +280,7 @@ function BooksPageContent() {
                     <TableCell><Skeleton className="h-8 w-48" /></TableCell>
                     <TableCell><Skeleton className="h-8 w-32" /></TableCell>
                     <TableCell><Skeleton className="h-8 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                   </TableRow>
                 ))}
                 {!loading && books?.map((book) => (
@@ -280,10 +297,37 @@ function BooksPageContent() {
                             {book.status}
                         </span>
                     </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                    <TableCell className="text-right">
+                       <AlertDialog>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50">
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </AlertDialogTrigger>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                           <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete the book
+                                    and remove its data from our servers.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteBook(book.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </TableCell>
                   </TableRow>
                 ))}

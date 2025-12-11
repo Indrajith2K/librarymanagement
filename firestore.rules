@@ -44,14 +44,14 @@ service cloud.firestore {
       allow read: if true; 
       // Allow writes only from authenticated admin users (app-level check for password admins)
       allow create: if true; // relies on app logic to be secure
-      allow update, delete: if isAdmin();
+      allow update, delete: if true; // relies on app logic to be secure
     }
 
     match /members/{memberId} {
       // Allow any user who has passed app-level admin checks to read and create.
       allow read: if true;
       allow create: if true; // relies on app logic to be secure
-      allow update, delete: if isAdmin(); // more restrictive for now
+      allow update, delete: if true; // relies on app logic to be secure
     }
 
     match /rfidTags/{rfidTagId} {

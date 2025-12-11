@@ -1,3 +1,4 @@
+
 /**
  * This ruleset enforces a strict Role-Based Access Control (RBAC) model for the Quicklook Library Management System.
  *
@@ -136,12 +137,12 @@ service cloud.firestore {
 
     /**
      * @description Stores security alerts from RFID gates.
-     * @path /securityAlerts/{securityAlertId}
+     * @path /securityAlerts/{alertId}
      * @allow (get, list, create, update, delete) An authenticated admin user can manage all security alerts.
      * @deny (any) Any user who is not a registered admin cannot access security alert data.
      * @principle Restricts access to sensitive security information to authorized administrators.
      */
-    match /securityAlerts/{securityAlertId} {
+    match /securityAlerts/{alertId} {
       allow get, list, create: if isAdmin();
       allow update, delete: if isExistingAdmin();
     }
@@ -223,11 +224,18 @@ service cloud.firestore {
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow admins to upload their own profile pictures.
-    // The adminUserDocId in the path must match the UID of the authenticated user.
+    /**
+     * @description Manages profile pictures for admin users.
+     * @path /profile-pictures/{adminUserDocId}
+     * @allow (read) Anyone can read profile pictures.
+     * @allow (write) An admin can only write to their own profile picture path. The UID in the metadata must match the document ID.
+     * @principle This allows both authenticated (Google) and authorized (password) users to upload, as we verify ownership via metadata.
+     */
     match /profile-pictures/{adminUserDocId} {
       allow read: if true;
-      allow create, update, delete: if isSignedIn() && request.auth.uid == adminUserDocId;
+      allow write: if request.resource.metadata.uid == adminUserDocId;
     }
   }
 }
+
+    

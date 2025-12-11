@@ -16,9 +16,13 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import ReactCrop, { type Crop, PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { useStorage, useUser } from '@/firebase';
+import { useStorage } from '@/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { User as FirebaseAuthUser } from 'firebase/auth';
+
+const getInitials = (name: string | undefined) => {
+    if (!name) return 'A';
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+};
 
 function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number) {
   return centerCrop(
@@ -28,72 +32,8 @@ function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: numbe
   );
 }
 
-const getInitials = (name: string | undefined) => {
-    if (!name) return 'A';
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-};
-
-// A helper component to ensure auth is loaded before rendering the uploader
-function ProfileSettings() {
-  const { user: authUser, loading: authLoading } = useUser();
-  const { adminUser, updateAdminUser, loading: adminLoading } = useAdminUser();
-  
-  if (authLoading || adminLoading) {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Your Profile</CardTitle>
-                <CardDescription>Update your display name and profile picture.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <p>Loading profile...</p>
-            </CardContent>
-        </Card>
-    );
-  }
-
-  // We require an authenticated Firebase Auth user to proceed with Storage operations.
-  // This is because password-based sessions are not "authenticated" in a way
-  // that Firebase Storage security rules can verify.
-  if (!authUser) {
-      return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Your Profile</CardTitle>
-                <CardDescription>Update your display name and profile picture.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                 <div className="flex items-center gap-6">
-                    <Avatar className="h-20 w-20">
-                        <AvatarImage src={adminUser?.photoURL || undefined} />
-                        <AvatarFallback>{getInitials(adminUser?.displayName)}</AvatarFallback>
-                    </Avatar>
-                    <p className="text-sm text-muted-foreground">
-                        Profile picture management is only available when logged in with a Google account.
-                    </p>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="display-name">Display Name</Label>
-                    <Input 
-                        id="display-name" 
-                        value={adminUser?.displayName || ''}
-                        disabled={true}
-                    />
-                </div>
-            </CardContent>
-            <CardFooter className="border-t px-6 py-4">
-                <Button disabled>Save Profile</Button>
-            </CardFooter>
-        </Card>
-      )
-  }
-
-  return <ProfileUploader authUser={authUser} />
-}
-
-
-function ProfileUploader({ authUser }: { authUser: FirebaseAuthUser }) {
-  const { adminUser, updateAdminUser, loading: adminLoading } = useAdminUser();
+function ProfileUploader() {
+  const { adminUser, adminUserDocId, updateAdminUser, loading: adminLoading } = useAdminUser();
   const storage = useStorage();
   const { toast } = useToast();
   
@@ -179,7 +119,10 @@ function ProfileUploader({ authUser }: { authUser: FirebaseAuthUser }) {
   };
 
   const handleCropAndUpload = async () => {
-    if (!completedCrop || !imgRef.current || !storage) return;
+    if (!completedCrop || !imgRef.current || !storage || !adminUserDocId) {
+        toast({ variant: "destructive", title: "Error", description: "Cannot upload image. User or storage not available." });
+        return;
+    };
 
     setIsUploading(true);
     try {
@@ -188,8 +131,10 @@ function ProfileUploader({ authUser }: { authUser: FirebaseAuthUser }) {
             throw new Error("Could not process the image.");
         }
 
-        const profilePicRef = storageRef(storage, `profile-pictures/${authUser.uid}`);
-        const snapshot = await uploadBytes(profilePicRef, croppedBlob);
+        const profilePicRef = storageRef(storage, `profile-pictures/${adminUserDocId}`);
+        // This metadata is crucial for the security rule to pass for password-based admins
+        const uploadMetadata = { customMetadata: { uid: adminUserDocId } };
+        const snapshot = await uploadBytes(profilePicRef, croppedBlob, uploadMetadata);
         const downloadURL = await getDownloadURL(snapshot.ref);
 
         await updateAdminUser({ photoURL: downloadURL });
@@ -204,7 +149,7 @@ function ProfileUploader({ authUser }: { authUser: FirebaseAuthUser }) {
         toast({
             variant: "destructive",
             title: "Upload Failed",
-            description: error.message || "Could not upload the image.",
+            description: error.message || "Could not upload the image. Check storage rules.",
         });
     } finally {
         setIsUploading(false);
@@ -213,13 +158,13 @@ function ProfileUploader({ authUser }: { authUser: FirebaseAuthUser }) {
   };
 
   const handleRemovePicture = async () => {
-    if (!storage || !adminUser?.photoURL) {
-      toast({ variant: "destructive", title: "Error", description: "No picture to remove." });
+    if (!storage || !adminUser?.photoURL || !adminUserDocId) {
+      toast({ variant: "destructive", title: "Error", description: "No picture to remove or user not found." });
       return;
     }
     setIsDeleting(true);
     try {
-        const profilePicRef = storageRef(storage, `profile-pictures/${authUser.uid}`);
+        const profilePicRef = storageRef(storage, `profile-pictures/${adminUserDocId}`);
         await deleteObject(profilePicRef);
         await updateAdminUser({ photoURL: "" });
         toast({
@@ -227,7 +172,7 @@ function ProfileUploader({ authUser }: { authUser: FirebaseAuthUser }) {
             description: "Your picture has been removed.",
         });
     } catch(error: any) {
-        // If file doesn't exist, we can just clear the URL from DB
+        // If the object doesn't exist in storage, we can still clear the URL from the database
         if (error.code === 'storage/object-not-found') {
              await updateAdminUser({ photoURL: "" });
              toast({
@@ -245,6 +190,20 @@ function ProfileUploader({ authUser }: { authUser: FirebaseAuthUser }) {
     } finally {
         setIsDeleting(false);
     }
+  }
+
+   if (adminLoading) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Your Profile</CardTitle>
+                <CardDescription>Update your display name and profile picture.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p>Loading profile...</p>
+            </CardContent>
+        </Card>
+    );
   }
   
   return (
@@ -337,7 +296,7 @@ function SettingsPageContent() {
           </p>
         </div>
 
-        <ProfileSettings />
+        <ProfileUploader />
         
         <Card>
             <CardHeader>
@@ -381,7 +340,7 @@ function SettingsPageContent() {
             <CardHeader>
                 <CardTitle>System Settings</CardTitle>
                 <CardDescription>Configure system-wide application settings.</CardDescription>
-            </CardHeader>
+            </Header>
             <CardContent className="space-y-4">
                 
                 <div className="flex items-center justify-between space-x-4">
@@ -418,5 +377,3 @@ export default function SettingsPage() {
         </AdminUserProvider>
     )
 }
-
-    

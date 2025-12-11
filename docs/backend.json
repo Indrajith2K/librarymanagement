@@ -136,15 +136,17 @@
         },
         "AdminUser": {
             "title": "Admin User",
-            "description": "An administrator or staff account with specific roles.",
+            "description": "An administrator or staff account with specific roles. Can be authenticated via Firebase Auth or a Staff ID/Password combination stored directly in Firestore.",
             "type": "object",
             "properties": {
-                "uid": { "type": "string", "description": "Matches Firebase Auth UID." },
-                "email": { "type": "string", "format": "email" },
+                "uid": { "type": "string", "description": "Matches Firebase Auth UID for users logging in with Google. Can be empty for password-based users." },
+                "email": { "type": "string", "format": "email", "description": "Email of the admin user, primary identifier for Google Auth." },
                 "role": { "type": "string", "enum": ["Super Admin", "Librarian", "Assistant"] },
-                "displayName": { "type": "string" }
+                "displayName": { "type": "string" },
+                "staffId": { "type": "string", "description": "Unique Staff ID for password-based login." },
+                "password": { "type": "string", "description": "Plaintext password. HIGHLY INSECURE. For demonstration only." }
             },
-            "required": ["uid", "email", "role"]
+            "required": ["role"]
         },
         "SystemSetting": {
             "title": "System Setting",

@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { UserCircle2 } from "lucide-react";
-import { useAuth } from "@/firebase";
+import { useAuth, useFirestore } from "@/firebase";
 import { GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -15,9 +16,11 @@ import { Separator } from "@/components/ui/separator";
 export default function AdminLoginPage() {
   const router = useRouter();
   const auth = useAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isGoogleLoading, setGoogleLoading] = useState(false);
+  const [isPasswordLoading, setPasswordLoading] = useState(false);
   const [staffId, setStaffId] = useState('');
   const [password, setPassword] = useState('');
 
@@ -64,23 +67,54 @@ export default function AdminLoginPage() {
       });
   }, [auth, router, toast]);
 
-  const handlePasswordLogin = () => {
-    // Dummy authentication as per documentation
-    if (staffId === '23di21' && password === '12345') {
-        toast({
-            title: "Login Successful",
-            description: "Redirecting to the admin dashboard...",
+  const handlePasswordLogin = async () => {
+    if (!firestore) {
+      toast({ variant: "destructive", title: "Error", description: "Database service is not available." });
+      return;
+    }
+    if (!staffId || !password) {
+        toast({ variant: "destructive", title: "Login Failed", description: "Please enter both Staff ID and Password." });
+        return;
+    }
+
+    setPasswordLoading(true);
+
+    try {
+        const adminUsersRef = collection(firestore, "adminUsers");
+        const q = query(adminUsersRef, where("staffId", "==", staffId));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            toast({ variant: "destructive", title: "Login Failed", description: "Staff ID not found." });
+            setPasswordLoading(false);
+            return;
+        }
+
+        let userFound = false;
+        querySnapshot.forEach((doc) => {
+            const admin = doc.data();
+            // IMPORTANT: Storing and checking plaintext passwords is very insecure.
+            // This is for demonstration purposes only. Use Firebase Auth instead.
+            if (admin.password === password) {
+                userFound = true;
+                toast({
+                    title: "Login Successful",
+                    description: "Redirecting to the admin dashboard...",
+                });
+                sessionStorage.setItem('dummy_admin', 'true');
+                router.push('/admin/dashboard');
+            }
         });
-        // We'll manually set a session flag for non-firebase auth for dashboard guard
-        // This is a temporary solution for the dummy login
-        sessionStorage.setItem('dummy_admin', 'true');
-        router.push('/admin/dashboard');
-    } else {
-        toast({
-            variant: "destructive",
-            title: "Login Failed",
-            description: "Incorrect Staff ID or Password.",
-        });
+
+        if (!userFound) {
+             toast({ variant: "destructive", title: "Login Failed", description: "Incorrect Password." });
+        }
+
+    } catch (error) {
+        console.error("Password Login Error:", error);
+        toast({ variant: "destructive", title: "Login Error", description: "An error occurred while trying to log in." });
+    } finally {
+        setPasswordLoading(false);
     }
   };
 
@@ -131,6 +165,7 @@ export default function AdminLoginPage() {
                         required 
                         value={staffId}
                         onChange={(e) => setStaffId(e.target.value)}
+                        disabled={isPasswordLoading}
                     />
                 </div>
                 <div className="space-y-2">
@@ -142,11 +177,12 @@ export default function AdminLoginPage() {
                         required 
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
+                        disabled={isPasswordLoading}
                     />
                 </div>
             </div>
-             <Button className="w-full" onClick={handlePasswordLogin}>
-                Login
+             <Button className="w-full" onClick={handlePasswordLogin} disabled={isPasswordLoading}>
+                {isPasswordLoading ? 'Logging in...' : 'Login'}
             </Button>
             <div className="relative">
                 <div className="absolute inset-0 flex items-center">

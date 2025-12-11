@@ -16,6 +16,7 @@
  * Structural Segregation: Each data type is in its own collection, ensuring access rules are isolated and efficient.
  */
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -216,6 +217,17 @@ service cloud.firestore {
       allow get, list: if isAdmin();
       allow create: if isAdmin() && isAuthorOfLog();
       allow update, delete: if false;
+    }
+  }
+}
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow admins to upload their own profile pictures.
+    // The adminUserDocId in the path must match the UID of the authenticated user.
+    match /profile-pictures/{adminUserDocId} {
+      allow read: if true;
+      allow create, update, delete: if isSignedIn() && request.auth.uid == adminUserDocId;
     }
   }
 }

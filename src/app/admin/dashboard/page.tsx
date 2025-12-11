@@ -9,10 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { UserPlus, BookUp, MoreHorizontal, Users2, Library, BookX } from "lucide-react";
+import { UserPlus, BookUp, MoreHorizontal, Users2, Library, BookX, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from 'next/image';
 import { useAdminUser, AdminUserProvider } from '@/context/AdminUserContext';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface Member {
   id: string;
@@ -27,6 +28,32 @@ interface Book {
   author: string;
   status: 'available' | 'issued' | 'lost' | 'damaged' | 'reserved';
 }
+
+const overdueBooks = [
+  { userId: '10021', userName: 'Alex Ray', bookId: '#B-10021-30', title: 'Ancestor Trouble', author: 'Maud Newton', overdue: '3 days', status: 'Returned (late)', fine: 'BDT. 150' },
+  { userId: '12034', userName: 'Sophia', bookId: '#B-32521-31', title: 'Life Is Everywhere', author: 'Lucy Ives', overdue: '1 day', status: 'Delay', fine: 'BDT. 50' },
+  { userId: '22987', userName: 'Jhon', bookId: '#G-95501-31', title: 'Stroller', author: 'Amanda Parrish', overdue: '5 days', status: 'Returned (late)', fine: 'BDT. 250' },
+  { userId: '53272', userName: 'Rose', bookId: '#R-773521-67', title: 'The Secret Syllabus', author: 'Terence C. Burnhum', overdue: '-', status: 'Returned', fine: '-' },
+];
+
+const issuedBooks = [
+  { userId: '10021', bookTitle: 'Ancestor Trouble', bookAuthor: 'Maud Newton', issueDate: '20 Dec, 2022', returnDate: '21 Dec, 2022', image: 'https://picsum.photos/seed/ancestor-trouble/40/60' },
+  { userId: '12034', bookTitle: 'Life Is Everywhere', bookAuthor: 'Lucy Ives', issueDate: '23 Dec, 2022', returnDate: '26 Dec, 2022', image: 'https://picsum.photos/seed/life-everywhere/40/60' },
+  { userId: '22987', bookTitle: 'Stroller', bookAuthor: 'Amanda Parrish', issueDate: '23 Dec, 2022', returnDate: '28 Dec, 2022', image: 'https://picsum.photos/seed/stroller-book/40/60' },
+  { userId: '53272', bookTitle: 'The Secret Syllabus', bookAuthor: 'Terence C. Burnhum', issueDate: '31 Dec, 2022', returnDate: '3 Jan, 2023', image: 'https://picsum.photos/seed/secret-syllabus/40/60' },
+  { userId: '06787', bookTitle: 'A Brief History of Time', bookAuthor: 'Stephen Hawking', issueDate: '1 Jan, 2023', returnDate: '6 Jan, 2023', image: 'https://picsum.photos/seed/brief-history/40/60' },
+];
+
+const statsData = [
+    { name: 'SAT', visitors: 28, borrowers: 45 },
+    { name: 'SUN', visitors: 75, borrowers: 35 },
+    { name: 'MON', visitors: 12, borrowers: 62 },
+    { name: 'TUE', visitors: 98, borrowers: 75 },
+    { name: 'WED', visitors: 15, borrowers: 18 },
+    { name: 'THU', visitors: 8, borrowers: 28 },
+    { name: 'FRI', visitors: 32, borrowers: 85 },
+];
+
 
 function AdminDashboardContent() {
   const { user, loading: authLoading } = useUser();
@@ -104,7 +131,7 @@ function AdminDashboardContent() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total Visitors</CardTitle>
-                        <Users2 className="h-5 w-5 text-pink-500" />
+                        <Users2 className="h-5 w-5 text-primary" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">1223</div>
@@ -113,7 +140,7 @@ function AdminDashboardContent() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Borrowed Books</CardTitle>
-                        <Library className="h-5 w-5 text-pink-500" />
+                        <Library className="h-5 w-5 text-primary" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">740</div>
@@ -122,7 +149,7 @@ function AdminDashboardContent() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Overdue Books</CardTitle>
-                        <BookX className="h-5 w-5 text-pink-500" />
+                        <BookX className="h-5 w-5 text-primary" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">22</div>
@@ -131,7 +158,7 @@ function AdminDashboardContent() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">New Members</CardTitle>
-                        <UserPlus className="h-5 w-5 text-pink-500" />
+                        <UserPlus className="h-5 w-5 text-primary" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">60</div>
@@ -191,7 +218,7 @@ function AdminDashboardContent() {
                         </Table>
                          {membersError && <p className="text-red-500 text-center p-4">Error: {membersError.message}</p>}
                          <div className="text-right mt-4 pr-6">
-                            <Button variant="link" className="text-pink-500" onClick={() => router.push('/admin/members')}>See All</Button>
+                            <Button variant="link" className="text-primary" onClick={() => router.push('/admin/members')}>See All</Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -246,7 +273,7 @@ function AdminDashboardContent() {
                         </Table>
                         {booksError && <p className="text-red-500 text-center p-4">Error: {booksError.message}</p>}
                          <div className="text-right mt-4 pr-6">
-                            <Button variant="link" className="text-pink-500" onClick={() => router.push('/admin/books')}>See All</Button>
+                            <Button variant="link" className="text-primary" onClick={() => router.push('/admin/books')}>See All</Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -264,6 +291,127 @@ function AdminDashboardContent() {
                     ))}
                 </div>
             </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Overdue Book List</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>User ID</TableHead>
+                                <TableHead>User Name</TableHead>
+                                <TableHead>Book ID</TableHead>
+                                <TableHead>Title</TableHead>
+                                <TableHead>Author</TableHead>
+                                <TableHead>Overdue</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Fine</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {overdueBooks.map((book) => (
+                                <TableRow key={book.bookId}>
+                                    <TableCell>{book.userId}</TableCell>
+                                    <TableCell className="flex items-center gap-2">
+                                        <Avatar className="h-6 w-6">
+                                            <AvatarImage src={`https://i.pravatar.cc/40?u=${book.userId}`} />
+                                            <AvatarFallback>{book.userName.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        {book.userName}
+                                    </TableCell>
+                                    <TableCell>{book.bookId}</TableCell>
+                                    <TableCell>{book.title}</TableCell>
+                                    <TableCell>{book.author}</TableCell>
+                                    <TableCell>{book.overdue}</TableCell>
+                                    <TableCell>
+                                      <span className={book.status === 'Delay' ? 'text-red-500' : book.status === 'Returned' ? 'text-green-500' : ''}>
+                                        {book.status}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell>{book.fine}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                    <div className="flex items-center justify-end space-x-2 py-4">
+                        <Button variant="outline" size="sm"><ChevronLeft className="h-4 w-4" /> </Button>
+                        <Button variant="outline" size="sm">1</Button>
+                        <Button variant="outline" size="sm">2</Button>
+                        <Button variant="outline" size="sm">3</Button>
+                        <Button variant="outline" size="sm">4</Button>
+                        <Button variant="outline" size="sm">5</Button>
+                        <Button variant="outline" size="sm"><ChevronRight className="h-4 w-4" /></Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                <Card className="xl:col-span-2">
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle>Books Issued</CardTitle>
+                        <Button variant="outline">Issue Book</Button>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>User ID</TableHead>
+                                    <TableHead>Book</TableHead>
+                                    <TableHead>Issue Date</TableHead>
+                                    <TableHead>Return Date</TableHead>
+                                    <TableHead>Details</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {issuedBooks.map((book) => (
+                                    <TableRow key={book.userId}>
+                                        <TableCell>{book.userId}</TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <Image src={book.image} alt={book.bookTitle} width={40} height={60} className="rounded" />
+                                                <div>
+                                                    <p className="font-medium">{book.bookTitle}</p>
+                                                    <p className="text-sm text-muted-foreground">{book.bookAuthor}</p>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>{book.issueDate}</TableCell>
+                                        <TableCell>{book.returnDate}</TableCell>
+                                        <TableCell><Button variant="link" className="text-primary p-0">View Details</Button></TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Visitors & Borrowers Statistics</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={statsData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                                <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} />
+                                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} />
+                                <Tooltip
+                                    cursor={{fill: 'hsl(var(--accent))'}}
+                                    contentStyle={{
+                                        backgroundColor: 'hsl(var(--background))',
+                                        borderColor: 'hsl(var(--border))',
+                                    }}
+                                />
+                                <Legend iconType="circle" />
+                                <Bar dataKey="visitors" fill="hsl(var(--chart-1))" name="Visitors" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="borrowers" fill="hsl(var(--chart-2))" name="Borrowers" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+            </div>
+
 
         </div>
     </AdminLayout>

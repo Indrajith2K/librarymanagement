@@ -37,7 +37,7 @@ export function AdminHeader() {
           <AdminSidebar />
         </SheetContent>
       </Sheet>
-      <div className="flex w-full items-center justify-between gap-4">
+      <div className="flex w-full items-center justify-end gap-4 md:justify-between">
         <h1 className="text-xl font-semibold hidden md:block">Dashboard</h1>
         <div className="relative flex-1 md:grow-0">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />

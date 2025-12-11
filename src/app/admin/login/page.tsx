@@ -26,6 +26,11 @@ export default function AdminLoginPage() {
 
 
   useEffect(() => {
+    // Ensure light theme is applied on mount for standalone pages
+    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add('light');
+    document.documentElement.style.colorScheme = 'light';
+    
     if (!auth || !firestore) {
       setIsLoading(false);
       return;

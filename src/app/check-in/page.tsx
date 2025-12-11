@@ -3,8 +3,15 @@
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useEffect } from 'react';
 
 export default function CheckInPage() {
+  useEffect(() => {
+    // Ensure light theme is applied on mount for standalone pages
+    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add('light');
+    document.documentElement.style.colorScheme = 'light';
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">

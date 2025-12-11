@@ -1,18 +1,16 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { ThemeProvider } from '@/components/theme-provider';
+import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 
 export default function SettingsPage() {
-  const { theme, setTheme } = useTheme();
-
   return (
     <AdminLayout>
       <div className="space-y-6 max-w-4xl mx-auto">
@@ -67,22 +65,20 @@ export default function SettingsPage() {
                 <CardDescription>Configure system-wide application settings.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <div className="flex items-center justify-between space-x-4">
-                    <div className="space-y-1">
-                        <Label>Theme</Label>
-                        <p className="text-sm text-muted-foreground">Choose the appearance of the application.</p>
+                <ThemeProvider
+                  attribute="class"
+                  defaultTheme="light"
+                  enableSystem={false}
+                  disableTransitionOnChange
+                >
+                    <div className="flex items-center justify-between space-x-4">
+                        <div className="space-y-1">
+                            <Label>Theme</Label>
+                            <p className="text-sm text-muted-foreground">Choose the appearance of the application.</p>
+                        </div>
+                        <ThemeSwitcher />
                     </div>
-                    <Select value={theme} onValueChange={setTheme}>
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Select theme" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="light">Light Mode</SelectItem>
-                            <SelectItem value="dark">Dark Mode</SelectItem>
-                            <SelectItem value="system">System Default</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
+                </ThemeProvider>
                  <Separator />
                 <div className="flex items-center justify-between space-x-4">
                     <div className="space-y-1">

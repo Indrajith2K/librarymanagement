@@ -42,11 +42,13 @@ export default function AdminDashboardPage() {
 
 
   useEffect(() => {
-    const isDummyAdmin = sessionStorage.getItem('dummy_admin') === 'true';
-
-    // If loading is finished and there's no firebase user AND no dummy admin, redirect to login
-    if (!loading && !user && !isDummyAdmin) {
-      router.push('/admin/login');
+    // We only want to redirect if loading is finished
+    if (!loading) {
+      const isDummyAdmin = sessionStorage.getItem('dummy_admin') === 'true';
+      // If there's no Firebase user AND it's not a dummy admin, then redirect.
+      if (!user && !isDummyAdmin) {
+        router.push('/admin/login');
+      }
     }
   }, [user, loading, router]);
 
@@ -56,13 +58,22 @@ export default function AdminDashboardPage() {
     setCurrentTime(date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }));
   }, []);
 
-  const isLoadingOrNoUser = loading || (!user && sessionStorage.getItem('dummy_admin') !== 'true');
-
-  if (isLoadingOrNoUser) {
+  // Show a loading screen while we verify the user's session.
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p>Loading dashboard...</p>
+        <p>Verifying session...</p>
       </div>
+    );
+  }
+
+  // If after loading there's still no user, it means the useEffect is about to redirect.
+  // We can show a message or just an empty screen to prevent the dashboard from flashing.
+  if (!user && sessionStorage.getItem('dummy_admin') !== 'true') {
+    return (
+         <div className="flex items-center justify-center min-h-screen">
+            <p>Redirecting to login...</p>
+        </div>
     );
   }
 

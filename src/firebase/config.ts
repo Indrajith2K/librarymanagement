@@ -3,26 +3,16 @@
 // See: https://firebase.google.com/docs/web/learn-more#config-object
 
 // =================================================================
-// STEP 1: GET YOUR FIREBASE CONFIG
+// YOUR FIREBASE CONFIGURATION HAS BEEN APPLIED
 // =================================================================
-// 1. Go to your Firebase project console: https://console.firebase.google.com/
-// 2. In your project, go to Project Settings (the gear icon).
-// 3. In the "Your apps" card, select the web app for this project.
-// 4. Look for "SDK setup and configuration" and select "Config".
-// 5. Copy the entire `firebaseConfig` object from the console.
-//
-// =================================================================
-// STEP 2: PASTE YOUR CONFIG BELOW
-// =================================================================
-// Replace the placeholder object below with the `firebaseConfig`
-// object you copied from your Firebase project.
+// The configuration object below now contains your project's
+// unique credentials. You can now connect to your Firebase project.
 
 export const firebaseConfig = {
-  apiKey: "PASTE_YOUR_API_KEY_HERE",
-  authDomain: "PASTE_YOUR_AUTH_DOMAIN_HERE",
-  projectId: "PASTE_YOUR_PROJECT_ID_HERE",
-  storageBucket: "PASTE_YOUR_STORAGE_BUCKET_HERE",
-  messagingSenderId: "PASTE_YOUR_MESSAGING_SENDER_ID_HERE",
-  appId: "PASTE_YOUR_APP_ID_HERE",
-  measurementId: "PASTE_YOUR_MEASUREMENT_ID_HERE"
+  apiKey: "AIzaSyC6gzom-LuYqmT-DlFqComr21NFzq6uDOA",
+  authDomain: "studio-3210910945-a0c5d.firebaseapp.com",
+  projectId: "studio-3210910945-a0c5d",
+  storageBucket: "studio-3210910945-a0c5d.appspot.com",
+  messagingSenderId: "889123335642",
+  appId: "1:889123335642:web:56a62a6eb0aec02beb24e3"
 };

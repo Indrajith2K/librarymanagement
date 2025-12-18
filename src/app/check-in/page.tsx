@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useEffect } from 'react';
 
-export default function CheckInPage() {
+export default function IssuePage() {
   useEffect(() => {
     // Ensure light theme is applied on mount for standalone pages
     document.documentElement.classList.remove('dark');
@@ -18,8 +18,8 @@ export default function CheckInPage() {
       <main className="flex flex-1 flex-col items-center justify-center p-4 gap-8">
         <Logo iconClassName="h-8 w-8" textClassName="text-3xl" />
         <div className="text-center">
-            <h1 className="text-4xl font-bold">Check In</h1>
-            <p className="text-lg text-muted-foreground mt-2">You have successfully checked in.</p>
+            <h1 className="text-4xl font-bold">Issue Successful</h1>
+            <p className="text-lg text-muted-foreground mt-2">You have successfully issued the item.</p>
         </div>
         <Button asChild>
           <Link href="/">Back to Home</Link>

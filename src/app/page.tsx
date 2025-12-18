@@ -33,11 +33,11 @@ export default function Home() {
     setScanState('verified');
   };
 
-  const handleCheckIn = () => {
+  const handleIssue = () => {
     router.push('/check-in');
   }
 
-  const handleCheckOut = () => {
+  const handleReturn = () => {
     router.push('/check-out');
   }
 
@@ -127,21 +127,21 @@ export default function Home() {
                               <CardContent className="p-0">
                                   <div className="w-full h-full aspect-square flex flex-col items-center justify-center gap-4">
                                       <LogIn className="h-20 w-20 text-foreground" />
-                                      <span className="text-2xl font-semibold text-foreground">Check In</span>
+                                      <span className="text-2xl font-semibold text-foreground">Issue</span>
                                   </div>
                               </CardContent>
                           </Card>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                           <AlertDialogHeader>
-                          <AlertDialogTitle>Are you sure you want to check in?</AlertDialogTitle>
+                          <AlertDialogTitle>Are you sure you want to issue an item?</AlertDialogTitle>
                           <AlertDialogDescription>
-                              This action will mark you as checked in for your session.
+                              This action will begin the item issuance process.
                           </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                           <AlertDialogCancel>No</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleCheckIn}>Yes</AlertDialogAction>
+                          <AlertDialogAction onClick={handleIssue}>Yes</AlertDialogAction>
                           </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
@@ -151,21 +151,21 @@ export default function Home() {
                                 <CardContent className="p-0">
                                     <div className="w-full h-full aspect-square flex flex-col items-center justify-center gap-4">
                                         <LogOut className="h-20 w-20 text-foreground" />
-                                        <span className="text-2xl font-semibold text-foreground">Check Out</span>
+                                        <span className="text-2xl font-semibold text-foreground">Return</span>
                                     </div>
                                 </CardContent>
                             </Card>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure you want to check out?</AlertDialogTitle>
+                            <AlertDialogTitle>Are you sure you want to return an item?</AlertDialogTitle>
                             <AlertDialogDescription>
-                                This action will mark you as checked out for your session.
+                                This action will begin the item return process.
                             </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                             <AlertDialogCancel>No</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleCheckOut}>Yes</AlertDialogAction>
+                            <AlertDialogAction onClick={handleReturn}>Yes</AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>

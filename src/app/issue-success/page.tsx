@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useEffect } from 'react';
 
-export default function IssuePage() {
+export default function IssueSuccessPage() {
   useEffect(() => {
     // Ensure light theme is applied on mount for standalone pages
     document.documentElement.classList.remove('dark');
@@ -19,7 +19,7 @@ export default function IssuePage() {
         <Logo iconClassName="h-8 w-8" textClassName="text-3xl" />
         <div className="text-center">
             <h1 className="text-4xl font-bold">Issue Successful</h1>
-            <p className="text-lg text-muted-foreground mt-2">You have successfully issued the item.</p>
+            <p className="text-lg text-muted-foreground mt-2">The selected items have been successfully issued.</p>
         </div>
         <Button asChild>
           <Link href="/">Back to Home</Link>

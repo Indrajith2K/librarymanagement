@@ -34,7 +34,7 @@ export default function Home() {
   };
 
   const handleIssue = () => {
-    router.push('/check-in');
+    router.push('/issue');
   }
 
   const handleReturn = () => {

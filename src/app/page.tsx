@@ -38,7 +38,7 @@ export default function Home() {
   }
 
   const handleReturn = () => {
-    router.push('/check-out');
+    router.push('/return');
   }
 
   useEffect(() => {

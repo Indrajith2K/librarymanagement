@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -44,6 +45,7 @@ type AdminUserFormData = z.infer<typeof adminUserSchema>;
 function AddUserForm({ onFinished }: { onFinished: () => void }) {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { adminUser, adminUserDocId } = useAdminUser();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const form = useForm<AdminUserFormData>({
@@ -63,17 +65,22 @@ function AddUserForm({ onFinished }: { onFinished: () => void }) {
         }
         setIsSubmitting(true);
         try {
-            await addDoc(collection(firestore, 'adminusers'), {
+            // Pass the current admin's doc ID for the security rules
+            const dataToWrite = {
                 ...values,
+                __admin_id__: adminUserDocId,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
-            });
+            }
+
+            await addDoc(collection(firestore, 'adminusers'), dataToWrite);
+
             toast({ title: 'Success', description: 'New user has been created.' });
             onFinished();
             form.reset();
         } catch (error: any) {
             console.error("Error adding user: ", error);
-            toast({ variant: 'destructive', title: 'Error Creating User', description: error.message });
+            toast({ variant: 'destructive', title: 'Error Creating User', description: error.message || 'Missing or insufficient permissions.' });
         } finally {
             setIsSubmitting(false);
         }

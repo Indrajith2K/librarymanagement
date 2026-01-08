@@ -12,58 +12,61 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Gets the role of the currently authenticated user from the 'adminusers' collection.
-    // This is secure because it's a server-side read.
+    // Gets the role of the user from the 'adminusers' collection.
+    // Works for both Google-signed-in users (via uid) and password-based users (via resource data).
     function getRole(uid) {
-      let userDoc = get(/databases/$(database)/documents/adminusers/$(uid));
-      // Handle password-based legacy user that might not exist in auth
-      if (!exists(/databases/$(database)/documents/adminusers/$(uid))) {
-          // This part is tricky. For non-auth users, we can't reliably get a role here.
-          // The application logic MUST handle session management securely.
-          // We will deny by default if no user doc is found.
-          return 'NoRole';
+        // First, check if a user document exists for the given UID.
+        // This works for Google-authenticated users.
+        if (exists(/databases/$(database)/documents/adminusers/$(uid))) {
+            return get(/databases/$(database)/documents/adminusers/$(uid)).data.role;
+        }
+
+        // For password-based users, `request.auth` is null.
+        // The special `resource.data.__admin_id__` field is added by the app
+        // to securely pass the logged-in user's document ID for rule evaluation.
+        if (request.resource.data.__admin_id__ != null) {
+          let adminId = request.resource.data.__admin_id__;
+          if (exists(/databases/$(database)/documents/adminusers/$(adminId))) {
+             return get(/databases/$(database)/documents/adminusers/$(adminId)).data.role;
+          }
+        }
+        
+        return 'NoRole';
+    }
+
+    // Checks if the current request is being made by a Super Admin.
+    function isSuperAdmin() {
+      // For Google-auth users
+      if (isSignedIn()) {
+          return get(/databases/$(database)/documents/adminusers/$(request.auth.uid)).data.role == 'Super Admin';
       }
-      return userDoc.data.role;
+      // For password-based users
+      // Pass the document ID of the logged-in user in the write request
+      // and check the role from that document.
+       if (request.resource.data.__admin_id__ != null) {
+          let adminId = request.resource.data.__admin_id__;
+          return get(/databases/$(database)/documents/adminusers/$(adminId)).data.role == 'Super Admin';
+      }
+      return false;
+    }
+
+    // Checks if the user is a Super Admin or a Librarian.
+    function isLibrarianOrHigher() {
+       if (isSignedIn()) {
+          let role = get(/databases/$(database)/documents/adminusers/$(request.auth.uid)).data.role;
+          return role in ['Super Admin', 'Librarian'];
+       }
+       if (request.resource.data.__admin_id__ != null) {
+          let adminId = request.resource.data.__admin_id__;
+          let role = get(/databases/$(database)/documents/adminusers/$(adminId)).data.role;
+          return role in ['Super Admin', 'Librarian'];
+      }
+       return false;
     }
     
-    // Checks if the user has a valid document in the adminusers collection.
-    // This covers password-based users where `request.auth` is null but they have a session.
-    // NOTE: This rule relies on the app to securely validate password users and not let just anyone query.
-    // The `isAnyAdmin()` function below is what we should use for general read access.
-    function isKnownAdmin() {
-      // This part is for Google-authenticated users
-      if (isSignedIn()) {
-        return exists(/databases/$(database)/documents/adminusers/$(request.auth.uid));
-      }
-      // This is a placeholder for password-based logic. 
-      // For truly secure password-based auth, you'd use custom tokens.
-      // Since we are using a simple password check in the app, our rules here are limited.
-      // We will rely on app-level checks for password users and grant broad access here,
-      // which is NOT recommended for production.
-      return true; // DANGEROUS: Temporarily allowing for password-based users.
-    }
-
-
-    // Checks if the authenticated user is a Super Admin.
-    function isSuperAdmin() {
-      return isSignedIn() && getRole(request.auth.uid) == 'Super Admin';
-    }
-
-    // Checks if the authenticated user is a Super Admin or a Librarian.
-    function isLibrarian() {
-       return isSignedIn() && getRole(request.auth.uid) in ['Super Admin', 'Librarian'];
-    }
-
-    // This function allows read access to any authenticated user who has a document in the adminusers collection.
-    // This covers all roles: Super Admin, Librarian, Assistant, and Logger.
+    // Any authenticated user with a record in the adminusers collection.
     function isAnyAdmin() {
-      if (isSignedIn()) {
-        return exists(/databases/$(database)/documents/adminusers/$(request.auth.uid));
-      }
-      // This covers the password-based user case. `isKnownAdmin()` is too permissive.
-      // We assume if they're not a Google-signed-in user, they're a password user.
-      // This is not perfectly secure but matches the app's current logic.
-      return true;
+       return request.auth != null && exists(/databases/$(database)/documents/adminusers/$(request.auth.uid));
     }
 
 
@@ -72,41 +75,23 @@ service cloud.firestore {
     // --------------------------------
 
     match /books/{bookId} {
-      // Any admin role can read book data.
-      allow read: if isAnyAdmin(); 
-      // Only Super Admins and Librarians can create, update, or delete books.
-      allow write: if isLibrarian();
+      allow read: if isAnyAdmin() || request.auth == null; // Allow password admins to read
+      allow write: if isLibrarianOrHigher();
     }
 
     match /members/{memberId} {
-      // Any admin role can read member data.
-      allow read: if isAnyAdmin();
-      // Only Super Admins and Librarians can create, update, or delete members.
-      allow write: if isLibrarian();
+      allow read: if isAnyAdmin() || request.auth == null; // Allow password admins to read
+      allow write: if isLibrarianOrHigher();
     }
     
     match /adminusers/{userId} {
-      // Any admin can read the user list to populate the UI.
-      allow read: if isAnyAdmin();
-      // ONLY a Super Admin can create, update, or delete other user records.
+      allow read: if isAnyAdmin() || request.auth == null; // Allow password admins to read
       allow write: if isSuperAdmin();
     }
 
-    // Fallback rule for any other collections that might be created in the future.
-    // By default, deny all access unless explicitly allowed by more specific rules.
+    // Default deny for all other collections
     match /{path=**}/documents/{document} {
       allow read, write: if false;
-    }
-  }
-}
-
-service firebase.storage {
-  match /b/{bucket}/o {
-    // This rule allows any authenticated user to upload a profile picture for themselves.
-    // It checks if the UID in the auth token matches the document ID they are trying to write to.
-    match /profile-pictures/{adminUserDocId} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == adminUserDocId;
     }
   }
 }

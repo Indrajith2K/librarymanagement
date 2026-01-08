@@ -2,7 +2,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 
 interface AdminUser {
@@ -59,18 +59,39 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
                 const querySnapshot = await getDocs(q);
                 if (!querySnapshot.empty) {
                     const userDoc = querySnapshot.docs[0];
-                    const userData = userDoc.data() as AdminUser;
-                    
-                    // This is the critical fix. Ensure the main admin has the Super Admin role.
-                    if (userData.staffId === '23di21') {
-                        userData.role = 'Super Admin';
-                    }
-
-                    setAdminUser(userData);
+                    let userData = userDoc.data() as AdminUser;
                     setAdminUserDocId(userDoc.id);
+
+                    // This is the critical fix. Ensure the main admin has the Super Admin role.
+                    // If their role is not 'Super Admin', update it in the database.
+                    if (userData.staffId === '23di21' && userData.role !== 'Super Admin') {
+                        console.log("Correcting user 23di21 role to Super Admin...");
+                        const userRef = doc(firestore, 'adminusers', userDoc.id);
+                        await updateDoc(userRef, { role: 'Super Admin' });
+                        userData.role = 'Super Admin'; // Update local state immediately
+                    }
+                     setAdminUser(userData);
+
                 } else {
-                    setAdminUser(null);
-                    setAdminUserDocId(null);
+                    // This handles the very first time the 23di21 user logs in.
+                    if (staffId === '23di21') {
+                        console.log("First-time setup for Super Admin 23di21...");
+                        const batch = writeBatch(firestore);
+                        const newUserRef = doc(collection(firestore, 'adminusers'));
+                        const newUserData = {
+                            staffId: '23di21',
+                            password: '12345', // As per original login logic
+                            displayName: 'Main Admin',
+                            role: 'Super Admin',
+                        };
+                        batch.set(newUserRef, newUserData);
+                        await batch.commit();
+                        setAdminUser(newUserData);
+                        setAdminUserDocId(newUserRef.id);
+                    } else {
+                        setAdminUser(null);
+                        setAdminUserDocId(null);
+                    }
                 }
             } catch (error) {
                 console.error("Failed to fetch admin user data:", error);

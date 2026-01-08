@@ -1,8 +1,7 @@
-
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { collection, query, where, getDocs, doc, updateDoc, setDoc, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 
 interface AdminUser {
@@ -31,77 +30,66 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     const fetchAdminUser = useCallback(async () => {
-        if (!firestore || authLoading) {
-            return;
-        }
+        if (!firestore) return;
 
         setLoading(true);
+        const staffId = sessionStorage.getItem('admin_staff_id');
         
         try {
-            const adminUsersRef = collection(firestore, 'adminusers');
-            const staffId = sessionStorage.getItem('admin_staff_id');
-
-            let userDocSnapshot;
-            let querySource: 'google' | 'staff' | 'none' = 'none';
-
-            // Give priority to staffId login, then check for Google auth user
             if (staffId) {
+                // Handle password-based login
+                const adminUsersRef = collection(firestore, 'adminusers');
                 const q = query(adminUsersRef, where('staffId', '==', staffId));
                 const querySnapshot = await getDocs(q);
+
                 if (!querySnapshot.empty) {
-                    userDocSnapshot = querySnapshot.docs[0];
-                    querySource = 'staff';
-                }
-            } else if (authUser) {
-                const q = query(adminUsersRef, where('email', '==', authUser.email));
-                const querySnapshot = await getDocs(q);
-                 if (!querySnapshot.empty) {
-                    userDocSnapshot = querySnapshot.docs[0];
-                    querySource = 'google';
-                }
-            }
-
-            // If a document was found, process it
-            if (userDocSnapshot) {
-                let userData = userDocSnapshot.data() as AdminUser;
-                const userDocId = userDocSnapshot.id;
-
-                // **CRITICAL FIX**: If the staffId is '23di21', force-set the correct details.
-                if (userData.staffId === '23di21') {
-                    const correctData: Partial<AdminUser> = {
-                        displayName: 'Indrajith',
-                        role: 'Super Admin',
-                    };
-
-                    // If the data in the database is incorrect, update it.
-                    if (userData.displayName !== correctData.displayName || userData.role !== correctData.role) {
-                        const userRef = doc(firestore, 'adminusers', userDocId);
-                        await updateDoc(userRef, correctData);
-                        userData = { ...userData, ...correctData }; // Use corrected data immediately
+                    const userDoc = querySnapshot.docs[0];
+                    let userData = userDoc.data() as AdminUser;
+                    
+                    // Definitive fix for the Super Admin account
+                    if (staffId === '23di21') {
+                        const correctData = { displayName: 'Indrajith', role: 'Super Admin' };
+                        if (userData.displayName !== correctData.displayName || userData.role !== correctData.role) {
+                            await updateDoc(userDoc.ref, correctData);
+                            userData = { ...userData, ...correctData };
+                        }
                     }
-                }
-                
-                setAdminUser(userData);
-                setAdminUserDocId(userDocId);
+                    
+                    setAdminUser(userData);
+                    setAdminUserDocId(userDoc.id);
 
-            } else {
-                // If NO document was found, check if it's the special '23di21' first-time login
-                if (staffId === '23di21') {
-                    const newUserData: AdminUser = {
+                } else if (staffId === '23di21') {
+                    // This is the first-time login for the Super Admin, create the user
+                    const superAdminData: AdminUser & { password?: string } = {
                         staffId: '23di21',
                         displayName: 'Indrajith',
                         role: 'Super Admin',
+                        password: '12345',
                     };
-                    
-                    // Create the user with the correct details
-                    const newUserRef = await addDoc(collection(firestore, 'adminusers'), { ...newUserData, password: '12345' });
-                    setAdminUser(newUserData);
-                    setAdminUserDocId(newUserRef.id);
+                    // Use `setDoc` with a predictable ID to prevent duplicates
+                    const newDocRef = doc(firestore, 'adminusers', 'super_admin_23di21');
+                    await setDoc(newDocRef, superAdminData);
+                    setAdminUser(superAdminData);
+                    setAdminUserDocId(newDocRef.id);
+                }
+
+            } else if (authUser) {
+                // Handle Google Auth login
+                const adminUsersRef = collection(firestore, 'adminusers');
+                const q = query(adminUsersRef, where('email', '==', authUser.email));
+                const querySnapshot = await getDocs(q);
+
+                if (!querySnapshot.empty) {
+                    const userDoc = querySnapshot.docs[0];
+                    setAdminUser(userDoc.data() as AdminUser);
+                    setAdminUserDocId(userDoc.id);
                 } else {
-                    // No user found, clear context
                     setAdminUser(null);
                     setAdminUserDocId(null);
                 }
+            } else {
+                 setAdminUser(null);
+                 setAdminUserDocId(null);
             }
         } catch (error) {
             console.error("Failed to fetch admin user data:", error);
@@ -110,9 +98,10 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
         } finally {
             setLoading(false);
         }
-    }, [firestore, authUser, authLoading]);
+    }, [firestore, authUser]);
 
     useEffect(() => {
+        // Run only when firestore or authUser changes.
         fetchAdminUser();
     }, [fetchAdminUser]);
     
@@ -124,7 +113,6 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
         await updateDoc(userDocRef, data);
         setAdminUser(prevUser => prevUser ? { ...prevUser, ...data } : null);
     };
-
 
     const value = { adminUser, adminUserDocId, loading: authLoading || loading, updateAdminUser };
 

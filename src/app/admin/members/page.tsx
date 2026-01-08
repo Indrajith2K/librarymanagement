@@ -223,7 +223,7 @@ function MembersPageContent() {
   const { toast } = useToast();
   const [isAddMemberOpen, setAddMemberOpen] = useState(false);
   const { adminUser } = useAdminUser();
-  const canWrite = adminUser?.role === 'Super Admin' || adminUser?.role === 'Librarian';
+  const canWrite = useMemo(() => adminUser?.role === 'Super Admin' || adminUser?.role === 'Librarian', [adminUser]);
 
   const membersQuery = useMemo(() => {
     if (!firestore) return null;

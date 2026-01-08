@@ -205,7 +205,7 @@ function BooksPageContent() {
   const { toast } = useToast();
   const [isAddBookOpen, setAddBookOpen] = useState(false);
   const { adminUser } = useAdminUser();
-  const canWrite = adminUser?.role === 'Super Admin' || adminUser?.role === 'Librarian';
+  const canWrite = useMemo(() => adminUser?.role === 'Super Admin' || adminUser?.role === 'Librarian', [adminUser]);
 
   const booksQuery = useMemo(() => {
     if (!firestore) return null;

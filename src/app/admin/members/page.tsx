@@ -315,7 +315,7 @@ function MembersPageContent() {
                     <TableCell className="capitalize">{member.memberType}</TableCell>
                     <TableCell>{member.rfidCardId || 'N/A'}</TableCell>
                     <TableCell>
-                      <span className={`px-2 py-1 text-xs rounded-full ${member.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      <span className={`px-2 py-1 text-xs rounded-full ${member.isActive ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'}`}>
                         {member.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </TableCell>
@@ -330,7 +330,7 @@ function MembersPageContent() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <AlertDialogTrigger asChild>
-                                <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50">
+                                <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:text-red-400 dark:focus:bg-red-900/50 dark:focus:text-red-400">
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   Delete
                                 </DropdownMenuItem>

@@ -17,17 +17,20 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/adminusers/$(uid)).data.role;
     }
 
+    // Checks if the authenticated user is a Super Admin.
     function isSuperAdmin() {
-      // For Google-authenticated users, we check their role from the database.
       return isSignedIn() && getRole(request.auth.uid) == 'Super Admin';
     }
 
+    // Checks if the authenticated user is a Super Admin or a Librarian.
     function isLibrarian() {
        return isSignedIn() && getRole(request.auth.uid) in ['Super Admin', 'Librarian'];
     }
 
-    // This function allows read access to any authenticated user who exists in the adminusers collection.
+    // This function allows read access to any authenticated user who has a document in the adminusers collection.
+    // This covers all roles: Super Admin, Librarian, Assistant, and Logger.
     function isAnyAdmin() {
+      // The `exists` function is more efficient than `get` for checking existence.
       return isSignedIn() && exists(/databases/$(database)/documents/adminusers/$(request.auth.uid));
     }
 
@@ -35,34 +38,39 @@ service cloud.firestore {
     // --------------------------------
     // Collection Rules
     // --------------------------------
-    // The rules below will be replaced with application-level logic for password-based admins.
-    // For now, we will allow writes from any authenticated user and secure it in the app logic.
 
     match /books/{bookId} {
-      allow read: if true; 
-      allow write: if true; // relies on app logic to be secure
+      // Any authenticated admin can read books.
+      allow read: if isAnyAdmin(); 
+      // Only Super Admins and Librarians can create, update, or delete books.
+      allow write: if isLibrarian();
     }
 
     match /members/{memberId} {
-      allow read: if true;
-      allow write: if true; // relies on app logic to be secure
+      // Any authenticated admin can read members.
+      allow read: if isAnyAdmin();
+      // Only Super Admins and Librarians can create, update, or delete members.
+      allow write: if isLibrarian();
     }
     
     match /adminusers/{userId} {
-      allow read: if true;
-      allow write: if true; // relies on app logic to be secure (Super Admin check in code)
+      // Any authenticated admin can read the list of other admins.
+      allow read: if isAnyAdmin();
+      // ONLY a Super Admin can create, update, or delete user records.
+      allow write: if isSuperAdmin();
     }
 
-    // All other collections will be read-only for now, writes handled in app logic
+    // Fallback rule for any other collections that might be created.
+    // By default, deny all access unless explicitly allowed by other rules.
     match /{document=**} {
-      allow read: if true;
-      allow write: if false;
+      allow read, write: if false;
     }
   }
 }
 
 service firebase.storage {
   match /b/{bucket}/o {
+    // This rule allows any authenticated user to upload a profile picture for themselves.
     match /profile-pictures/{adminUserDocId} {
       allow read: if true;
       allow write: if request.resource.metadata.uid == adminUserDocId;

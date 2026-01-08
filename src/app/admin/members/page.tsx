@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { MoreHorizontal, Search, UserPlus, ScanLine, Trash2 } from 'lucide-react';
-import { AdminUserProvider } from '@/context/AdminUserContext';
+import { AdminUserProvider, useAdminUser } from '@/context/AdminUserContext';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, addDoc, serverTimestamp, doc, deleteDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -222,6 +222,8 @@ function MembersPageContent() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isAddMemberOpen, setAddMemberOpen] = useState(false);
+  const { adminUser } = useAdminUser();
+  const canWrite = adminUser?.role === 'Super Admin' || adminUser?.role === 'Librarian';
 
   const membersQuery = useMemo(() => {
     if (!firestore) return null;
@@ -264,7 +266,7 @@ function MembersPageContent() {
                     </div>
                      <Dialog open={isAddMemberOpen} onOpenChange={setAddMemberOpen}>
                         <DialogTrigger asChild>
-                           <Button><UserPlus className="mr-2 h-4 w-4" /> Add New Member</Button>
+                           <Button disabled={!canWrite}><UserPlus className="mr-2 h-4 w-4" /> Add New Member</Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[425px]">
                             <DialogHeader>
@@ -318,6 +320,7 @@ function MembersPageContent() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
+                      {canWrite && (
                        <AlertDialog>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -348,6 +351,7 @@ function MembersPageContent() {
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

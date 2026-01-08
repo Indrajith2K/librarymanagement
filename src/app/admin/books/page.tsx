@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BookUp, MoreHorizontal, Search, ScanLine, Trash2 } from 'lucide-react';
-import { AdminUserProvider } from '@/context/AdminUserContext';
+import { AdminUserProvider, useAdminUser } from '@/context/AdminUserContext';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, addDoc, serverTimestamp, doc, deleteDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -204,6 +204,8 @@ function BooksPageContent() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isAddBookOpen, setAddBookOpen] = useState(false);
+  const { adminUser } = useAdminUser();
+  const canWrite = adminUser?.role === 'Super Admin' || adminUser?.role === 'Librarian';
 
   const booksQuery = useMemo(() => {
     if (!firestore) return null;
@@ -245,7 +247,7 @@ function BooksPageContent() {
                     </div>
                      <Dialog open={isAddBookOpen} onOpenChange={setAddBookOpen}>
                         <DialogTrigger asChild>
-                           <Button><BookUp className="mr-2 h-4 w-4" /> Add New Book</Button>
+                           <Button disabled={!canWrite}><BookUp className="mr-2 h-4 w-4" /> Add New Book</Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[425px]">
                             <DialogHeader>
@@ -298,6 +300,7 @@ function BooksPageContent() {
                         </span>
                     </TableCell>
                     <TableCell className="text-right">
+                      {canWrite && (
                        <AlertDialog>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -328,6 +331,7 @@ function BooksPageContent() {
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -4,16 +4,18 @@ import { Logo } from '@/components/Logo';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
-import { LayoutDashboard, Book, Users, History, Settings, LogOut, HelpCircle } from 'lucide-react';
+import { LayoutDashboard, Book, Users, History, Settings, LogOut, HelpCircle, UserCog } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
+import { useAdminUser } from '@/context/AdminUserContext';
 
 const navItems = [
   { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/books', icon: Book, label: 'Books' },
   { href: '/admin/members', icon: Users, label: 'Members' },
+  { href: '/admin/users', icon: UserCog, label: 'Users', adminOnly: true },
   { href: '/admin/history', icon: History, label: 'History' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
@@ -23,6 +25,9 @@ export function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const auth = useAuth();
+  const { adminUser } = useAdminUser();
+  const isSuperAdmin = adminUser?.role === 'Super Admin';
+
 
   const handleLogout = async () => {
     sessionStorage.removeItem('admin_staff_id');
@@ -42,19 +47,24 @@ export function AdminSidebar() {
         <Logo textClassName="text-xl" />
       </div>
       <nav className="flex flex-col p-4 space-y-2 flex-grow">
-        {navItems.map((item) => (
-          <Button
-            key={item.href}
-            asChild
-            variant={pathname === item.href ? 'secondary' : 'ghost'}
-            className="justify-start"
-          >
-            <Link href={item.href}>
-              <item.icon className="mr-2 h-4 w-4" />
-              {item.label}
-            </Link>
-          </Button>
-        ))}
+        {navItems.map((item) => {
+            if (item.adminOnly && !isSuperAdmin) {
+                return null;
+            }
+            return (
+              <Button
+                key={item.href}
+                asChild
+                variant={pathname === item.href ? 'secondary' : 'ghost'}
+                className="justify-start"
+              >
+                <Link href={item.href}>
+                  <item.icon className="mr-2 h-4 w-4" />
+                  {item.label}
+                </Link>
+              </Button>
+            )
+        })}
       </nav>
       <div className="p-4 border-t mt-auto">
         <Button variant="ghost" className="w-full justify-start mb-2">

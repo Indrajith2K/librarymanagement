@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { MoreHorizontal, Search, UserPlus, Trash2 } from 'lucide-react';
 import { AdminUserProvider, useAdminUser } from '@/context/AdminUserContext';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, addDoc, serverTimestamp, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, addDoc, serverTimestamp, doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { useForm } from 'react-hook-form';
@@ -45,7 +45,6 @@ type AdminUserFormData = z.infer<typeof adminUserSchema>;
 function AddUserForm({ onFinished }: { onFinished: () => void }) {
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { adminUser, adminUserDocId } = useAdminUser();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const form = useForm<AdminUserFormData>({
@@ -65,15 +64,13 @@ function AddUserForm({ onFinished }: { onFinished: () => void }) {
         }
         setIsSubmitting(true);
         try {
-            // Pass the current admin's doc ID for the security rules
-            const dataToWrite = {
+            // Use staffId as the document ID
+            const userDocRef = doc(firestore, 'adminusers', values.staffId);
+            await setDoc(userDocRef, {
                 ...values,
-                __admin_id__: adminUserDocId,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
-            }
-
-            await addDoc(collection(firestore, 'adminusers'), dataToWrite);
+            });
 
             toast({ title: 'Success', description: 'New user has been created.' });
             onFinished();

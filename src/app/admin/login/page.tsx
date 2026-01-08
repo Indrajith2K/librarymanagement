@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { UserCircle2 } from "lucide-react";
 import { useAuth, useFirestore } from "@/firebase";
 import { GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, doc } from "firebase/firestore";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -93,33 +93,30 @@ export default function AdminLoginPage() {
     setPasswordLoading(true);
 
     try {
-        const adminUsersRef = collection(firestore, "adminusers");
-        const q = query(adminUsersRef, where("staffId", "==", staffId));
-        const querySnapshot = await getDocs(q);
+        // For password-based auth, we use the staffId as the document ID
+        const userDocRef = doc(firestore, "adminusers", staffId);
+        const userDocSnapshot = await getDocs(query(collection(firestore, "adminusers"), where("staffId", "==", staffId)));
 
-        if (querySnapshot.empty) {
+        if (userDocSnapshot.empty) {
             toast({ variant: "destructive", title: "Login Failed", description: "Staff ID not found." });
             setPasswordLoading(false);
             return;
         }
 
-        let userFound = false;
-        querySnapshot.forEach((doc) => {
-            const admin = doc.data();
-            // IMPORTANT: Storing and checking plaintext passwords is very insecure.
-            // This is for demonstration purposes only. Use Firebase Auth instead.
-            if (admin.password === password) {
-                userFound = true;
-                toast({
-                    title: "Login Successful",
-                    description: "Redirecting to the admin dashboard...",
-                });
-                sessionStorage.setItem('admin_staff_id', staffId);
-                router.push('/admin/dashboard');
-            }
-        });
-
-        if (!userFound) {
+        const adminDoc = userDocSnapshot.docs[0];
+        const admin = adminDoc.data();
+        
+        // IMPORTANT: Storing and checking plaintext passwords is very insecure.
+        // This is for demonstration purposes only. Use Firebase Auth instead.
+        if (admin.password === password) {
+            toast({
+                title: "Login Successful",
+                description: "Redirecting to the admin dashboard...",
+            });
+            // Store the staffId (which is the document ID) in session storage
+            sessionStorage.setItem('admin_staff_id', admin.staffId);
+            router.push('/admin/dashboard');
+        } else {
              toast({ variant: "destructive", title: "Login Failed", description: "Incorrect Password." });
         }
 

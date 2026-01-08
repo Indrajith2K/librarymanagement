@@ -204,15 +204,19 @@ function BooksPageContent() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isAddBookOpen, setAddBookOpen] = useState(false);
-  const { adminUser } = useAdminUser();
-  const canWrite = useMemo(() => adminUser?.role === 'Super Admin' || adminUser?.role === 'Librarian', [adminUser]);
+  const { adminUser, loading: adminLoading } = useAdminUser();
+
+  const canWrite = useMemo(() => {
+    if (adminLoading || !adminUser) return false;
+    return adminUser.role === 'Super Admin' || adminUser.role === 'Librarian';
+  }, [adminUser, adminLoading]);
 
   const booksQuery = useMemo(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'books'));
   }, [firestore]);
 
-  const { data: books, loading, error } = useCollection<Book>(booksQuery);
+  const { data: books, loading: booksLoading, error } = useCollection<Book>(booksQuery);
 
   const handleDeleteBook = async (bookId: string) => {
     if (!firestore) {
@@ -227,6 +231,8 @@ function BooksPageContent() {
         toast({ variant: 'destructive', title: 'Error deleting book', description: error.message });
     }
   };
+
+  const loading = booksLoading || adminLoading;
 
   return (
     <AdminLayout>

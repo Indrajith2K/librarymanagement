@@ -26,7 +26,7 @@ export function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const auth = useAuth();
-  const { adminUser } = useAdminUser();
+  const { adminUser, loading } = useAdminUser();
 
   const handleLogout = async () => {
     sessionStorage.removeItem('admin_staff_id');
@@ -40,11 +40,12 @@ export function AdminSidebar() {
   };
 
   const visibleNavItems = useMemo(() => {
+    if (loading) return []; // Don't show any items while loading
     return navItems.filter(item => {
       if (!item.requiredRole) return true;
       return adminUser?.role === item.requiredRole;
     });
-  }, [adminUser]);
+  }, [adminUser, loading]);
 
 
   return (
@@ -53,7 +54,18 @@ export function AdminSidebar() {
         <Logo textClassName="text-xl" />
       </div>
       <nav className="flex flex-col p-4 space-y-2 flex-grow">
-        {visibleNavItems.map((item) => (
+        {loading && navItems.map(item => 
+             <Button
+                key={item.href}
+                variant={'ghost'}
+                className="justify-start"
+                disabled
+            >
+                <item.icon className="mr-2 h-4 w-4" />
+                {item.label}
+            </Button>
+        )}
+        {!loading && visibleNavItems.map((item) => (
           <Button
             key={item.href}
             asChild

@@ -222,15 +222,19 @@ function MembersPageContent() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isAddMemberOpen, setAddMemberOpen] = useState(false);
-  const { adminUser } = useAdminUser();
-  const canWrite = useMemo(() => adminUser?.role === 'Super Admin' || adminUser?.role === 'Librarian', [adminUser]);
+  const { adminUser, loading: adminLoading } = useAdminUser();
+  
+  const canWrite = useMemo(() => {
+    if (adminLoading || !adminUser) return false;
+    return adminUser.role === 'Super Admin' || adminUser.role === 'Librarian';
+  }, [adminUser, adminLoading]);
 
   const membersQuery = useMemo(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'members'));
   }, [firestore]);
 
-  const { data: members, loading, error } = useCollection<Member>(membersQuery);
+  const { data: members, loading: membersLoading, error } = useCollection<Member>(membersQuery);
   
   const handleDeleteMember = async (memberId: string) => {
     if (!firestore) {
@@ -246,6 +250,7 @@ function MembersPageContent() {
     }
   };
 
+  const loading = membersLoading || adminLoading;
 
   return (
     <AdminLayout>

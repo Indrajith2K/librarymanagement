@@ -167,15 +167,19 @@ function UsersPageContent() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isAddUserOpen, setAddUserOpen] = useState(false);
-  const { adminUser } = useAdminUser();
-  const isSuperAdmin = adminUser?.role === 'Super Admin';
+  const { adminUser, loading: adminLoading } = useAdminUser();
+
+  const isSuperAdmin = useMemo(() => {
+    if (adminLoading || !adminUser) return false;
+    return adminUser.role === 'Super Admin';
+  }, [adminUser, adminLoading]);
 
   const usersQuery = useMemo(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'adminusers'));
   }, [firestore]);
 
-  const { data: users, loading, error } = useCollection<AdminUser>(usersQuery);
+  const { data: users, loading: usersLoading, error } = useCollection<AdminUser>(usersQuery);
   
   const handleDeleteUser = async (userId: string) => {
     if (!firestore) {
@@ -195,6 +199,8 @@ function UsersPageContent() {
     if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   }
+  
+  const loading = usersLoading || adminLoading;
 
   return (
     <AdminLayout>

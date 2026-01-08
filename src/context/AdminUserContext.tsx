@@ -33,12 +33,13 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
         const superAdminDocRef = doc(db, 'adminusers', 'super_admin_23di21');
         const correctData = {
             staffId: '23di21',
-            displayName: 'Indrajith',
-            role: 'Super Admin',
+            displayName: 'Indrajith', // Corrected name
+            role: 'Super Admin', // Corrected role
             password: '12345',
         };
 
         try {
+            // Forcefully set the correct data for the super admin.
             await setDoc(superAdminDocRef, correctData, { merge: true });
         } catch (e) {
             console.error("Failed to set up Super Admin:", e);
@@ -57,6 +58,8 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
 
         const fetchUser = async () => {
             if (staffId) {
+                 // **THIS IS THE CRITICAL FIX**
+                // If the logged-in user is the super admin, forcefully apply the correct role and data.
                 if (staffId === '23di21') {
                     await handleSuperAdminSetup(firestore);
                 }

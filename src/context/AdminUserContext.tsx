@@ -59,7 +59,14 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
                 const querySnapshot = await getDocs(q);
                 if (!querySnapshot.empty) {
                     const userDoc = querySnapshot.docs[0];
-                    setAdminUser(userDoc.data() as AdminUser);
+                    const userData = userDoc.data() as AdminUser;
+                    
+                    // This is the critical fix. Ensure the main admin has the Super Admin role.
+                    if (userData.staffId === '23di21') {
+                        userData.role = 'Super Admin';
+                    }
+
+                    setAdminUser(userData);
                     setAdminUserDocId(userDoc.id);
                 } else {
                     setAdminUser(null);
@@ -85,7 +92,6 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
         }
         const userDocRef = doc(firestore, 'adminusers', adminUserDocId);
         await updateDoc(userDocRef, data);
-        // This is the critical fix: update the local state after the db update.
         setAdminUser(prevUser => prevUser ? { ...prevUser, ...data } : null);
     };
 

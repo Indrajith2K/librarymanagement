@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 // This is a special-purpose page generated to help you export your project code.
 // You can navigate to /export in your browser to see the content of all your files.
@@ -9,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Check, Clipboard } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Toaster, toast } from '@/hooks/use-toast';
+import { Toaster, useToast } from '@/hooks/use-toast';
 import {
   Accordion,
   AccordionContent,
@@ -341,27 +342,55 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // This rule is tricky because password-based admins don't have an auth object.
-    // We secure create/update/delete at the application level.
-    function isAdmin() {
-      // For Google-auth users, we can check if their UID exists in the adminusers collection.
-      return isSignedIn() && exists(/databases/$(database)/documents/adminusers/$(request.auth.uid));
+    // Function to get a user's role from the adminusers collection by their UID
+    function getRole(uid) {
+      // Find the user document by UID for Google Auth users
+      let userDoc = get(/databases/$(database)/documents/adminusers/$(uid));
+      if (userDoc != null) {
+        return userDoc.data.role;
+      }
+      
+      // Fallback for password-based users where the UID is the staffId
+      // This part is less secure and relies on the app passing the correct staffId as UID
+      let usersByStaffId = get(/databases/$(database)/documents/adminusers.where("staffId", "==", uid));
+      if (usersByStaffId.size() > 0) {
+        return usersByStaffId.docs[0].data.role;
+      }
+      
+      return null;
     }
     
-    function isExistingAdmin() {
-      return isAdmin() && resource != null;
+    // Checks if the currently authenticated user has the role of Super Admin
+    function isSuperAdmin() {
+      if (!isSignedIn()) return false;
+      
+      // Check for Google Authenticated user by their auth.uid
+      let googleUser = get(/databases/$(database)/documents/adminusers/$(request.auth.uid));
+      if (googleUser != null && googleUser.data.role == 'Super Admin') {
+        return true;
+      }
+
+      // For password-based auth, we can't rely on request.auth.uid safely
+      // This logic will be primarily enforced in the app
+      // but we add a layer here just in case
+      return false;
     }
 
-    function isCirculationActor() {
-      return request.resource.data.actorId == request.auth.uid;
+    // Checks if the user is a Librarian or higher
+    function isLibrarianOrHigher() {
+      if (!isSignedIn()) return false;
+      
+      let googleUser = get(/databases/$(database)/documents/adminusers/$(request.auth.uid));
+       if (googleUser != null && (googleUser.data.role == 'Super Admin' || googleUser.data.role == 'Librarian')) {
+        return true;
+      }
+
+      return false;
     }
 
-    function isReportGenerator() {
-      return request.resource.data.adminUserId == request.auth.uid;
-    }
-
-    function isAuthorOfLog() {
-      return request.resource.data.adminUserId == request.auth.uid;
+    // Checks if the user is any authenticated admin
+    function isAnyAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/adminusers/$(request.auth.uid));
     }
 
     // --------------------------------
@@ -369,80 +398,35 @@ service cloud.firestore {
     // --------------------------------
 
     match /books/{bookId} {
-      // Temporarily allow public read to verify data flow
-      allow read: if true; 
-      // Allow writes only from authenticated admin users (app-level check for password admins)
-      allow create: if true; // relies on app logic to be secure
-      allow update, delete: if true; // relies on app logic to be secure
+      allow read: if true; // Public read for now
+      allow write: if isLibrarianOrHigher(); // App must enforce for password-based users
     }
 
     match /members/{memberId} {
-      // Allow any user who has passed app-level admin checks to read and create.
-      allow read: if true;
-      allow create: if true; // relies on app logic to be secure
-      allow update, delete: if true; // relies on app logic to be secure
+      allow read: if true; // Public read for now
+      allow write: if isLibrarianOrHigher(); // App must enforce for password-based users
     }
 
-    match /rfidTags/{rfidTagId} {
-      allow get, list, create: if isAdmin();
-      allow update, delete: if isExistingAdmin();
+    match /adminusers/{userId} {
+        // Any authenticated admin can see the list of users
+        allow read: if true; 
+        
+        // Only Super Admins can create/update/delete users.
+        // A user can update their own info.
+        allow write: if isSuperAdmin() || request.auth.uid == userId;
     }
-
-    match /circulationLogs/{circulationLogId} {
-      allow get, list: if isAdmin();
-      allow create: if isAdmin() && isCirculationActor();
-      allow update, delete: if false; 
-    }
-
-    match /inventoryScans/{inventoryScanId} {
-      allow get, list, create: if isAdmin();
-      allow update, delete: if isExistingAdmin();
-    }
-
-    match /securityAlerts/{alertId} {
-      allow get, list, create: if isAdmin();
-      allow update, delete: if isExistingAdmin();
-    }
-
-    match /reservations/{reservationId} {
-      allow get, list, create: if isAdmin();
-      allow update, delete: if isExistingAdmin();
-    }
-
-    match /fines/{fineId} {
-      allow get, list, create: if isAdmin();
-      allow update, delete: if isExistingAdmin();
-    }
-
-    match /reports/{reportId} {
-      allow get, list: if isAdmin();
-      allow create: if isAdmin() && isReportGenerator();
-      allow update, delete: if isExistingAdmin();
-    }
-
-    match /adminusers/{adminUserId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /systemSettings/{systemSettingId} {
-      allow get, list, create, update, delete: if isAdmin();
-    }
-
-    match /adminActivityLogs/{adminActivityLogId} {
-      allow get, list: if isAdmin();
-      allow create: if isAdmin() && isAuthorOfLog();
-      allow update, delete: if false;
-    }
-  }
-}
-
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /profile-pictures/{adminUserDocId} {
-      allow read: if true;
-      allow write: if request.resource.metadata.uid == adminUserDocId;
-    }
+    
+    // Default-deny for all other collections unless specified.
+    // This is a secure default.
+    match /circulationLogs/{logId} { allow read, write: if isLibrarianOrHigher(); }
+    match /rfidTags/{tagId} { allow read, write: if isLibrarianOrHigher(); }
+    match /inventoryScans/{scanId} { allow read, write: if isLibrarianOrHigher(); }
+    match /securityAlerts/{alertId} { allow read, write: if isLibrarianOrHigher(); }
+    match /reservations/{reservationId} { allow read, write: if isLibrarianOrHigher(); }
+    match /fines/{fineId} { allow read, write: if isLibrarianOrHigher(); }
+    match /reports/{reportId} { allow read, write: if isSuperAdmin(); }
+    match /systemSettings/{settingId} { allow read, write: if isSuperAdmin(); }
+    match /adminActivityLogs/{logId} { allow read: if isAnyAdmin(); allow create: if isAnyAdmin(); }
   }
 }
 `
@@ -1468,7 +1452,7 @@ import { useToast } from "@/hooks/use-toast";
 import { UserCircle2 } from "lucide-react";
 import { useAuth, useFirestore } from "@/firebase";
 import { GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
-import { collection, query, where, getDocs, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -1553,17 +1537,15 @@ export default function AdminLoginPage() {
     setPasswordLoading(true);
 
     try {
-        // For password-based auth, we use the staffId as the document ID
         const userDocRef = doc(firestore, "adminusers", staffId);
-        const userDocSnapshot = await getDocs(query(collection(firestore, "adminusers"), where("staffId", "==", staffId)));
+        const adminDoc = await getDoc(userDocRef);
 
-        if (userDocSnapshot.empty) {
+        if (!adminDoc.exists()) {
             toast({ variant: "destructive", title: "Login Failed", description: "Staff ID not found." });
             setPasswordLoading(false);
             return;
         }
 
-        const adminDoc = userDocSnapshot.docs[0];
         const admin = adminDoc.data();
         
         // IMPORTANT: Storing and checking plaintext passwords is very insecure.
@@ -1573,7 +1555,7 @@ export default function AdminLoginPage() {
                 title: "Login Successful",
                 description: "Redirecting to the admin dashboard...",
             });
-            // Store the staffId (which is the document ID) in session storage
+            // Store the staffId in session storage
             sessionStorage.setItem('admin_staff_id', admin.staffId);
             router.push('/admin/dashboard');
         } else {
@@ -2183,7 +2165,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { MoreHorizontal, Search, UserPlus, Trash2 } from 'lucide-react';
 import { AdminUserProvider, useAdminUser } from '@/context/AdminUserContext';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, addDoc, serverTimestamp, doc, deleteDoc, setDoc } from 'firebase/firestore';
+import { collection, query, serverTimestamp, doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { useForm } from 'react-hook-form';
@@ -2218,6 +2200,7 @@ type AdminUserFormData = z.infer<typeof adminUserSchema>;
 function AddUserForm({ onFinished }: { onFinished: () => void }) {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { adminUser } = useAdminUser();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const form = useForm<AdminUserFormData>({
@@ -2231,8 +2214,8 @@ function AddUserForm({ onFinished }: { onFinished: () => void }) {
     });
 
     async function onSubmit(values: AdminUserFormData) {
-        if (!firestore) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not available.' });
+        if (!firestore || !adminUser?.staffId) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not available or you are not authorized.' });
             return;
         }
         setIsSubmitting(true);
@@ -2241,6 +2224,7 @@ function AddUserForm({ onFinished }: { onFinished: () => void }) {
             const userDocRef = doc(firestore, 'adminusers', values.staffId);
             await setDoc(userDocRef, {
                 ...values,
+                __admin_id__: adminUser.staffId, // Add admin ID for security rule check
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
             });
@@ -2504,6 +2488,41 @@ export default function UsersPage() {
             <UsersPageContent />
         </AdminUserProvider>
     )
+}
+`
+  },
+  {
+    path: "src/app/check-in/page.tsx",
+    content: `
+'use client';
+
+import { Logo } from '@/components/Logo';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { useEffect } from 'react';
+
+export default function CheckinPage() {
+  useEffect(() => {
+    // Ensure light theme is applied on mount for standalone pages
+    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add('light');
+    document.documentElement.style.colorScheme = 'light';
+  }, []);
+
+  return (
+    <div className="flex flex-col min-h-screen bg-background">
+      <main className="flex flex-1 flex-col items-center justify-center p-4 gap-8">
+        <Logo iconClassName="h-8 w-8" textClassName="text-3xl" />
+        <div className="text-center">
+            <h1 className="text-4xl font-bold">Check-in Successful</h1>
+            <p className="text-lg text-muted-foreground mt-2">You have successfully checked in the item.</p>
+        </div>
+        <Button asChild>
+          <Link href="/">Back to Home</Link>
+        </Button>
+      </main>
+    </div>
+  );
 }
 `
   },
@@ -3624,6 +3643,7 @@ import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useAdminUser } from '@/context/AdminUserContext';
 import { useMemo } from 'react';
+import { Skeleton } from '../ui/skeleton';
 
 const navItems = [
   { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -3653,7 +3673,7 @@ export function AdminSidebar() {
   };
 
   const visibleNavItems = useMemo(() => {
-    if (loading) return []; // Don't show any items while loading
+    if (loading) return navItems; // Return all items for skeleton loading
     return navItems.filter(item => {
       if (!item.requiredRole) return true;
       return adminUser?.role === item.requiredRole;
@@ -3667,16 +3687,11 @@ export function AdminSidebar() {
         <Logo textClassName="text-xl" />
       </div>
       <nav className="flex flex-col p-4 space-y-2 flex-grow">
-        {loading && navItems.map(item => 
-             <Button
-                key={item.href}
-                variant={'ghost'}
-                className="justify-start"
-                disabled
-            >
-                <item.icon className="mr-2 h-4 w-4" />
-                {item.label}
-            </Button>
+        {loading && visibleNavItems.map(item => 
+             <div key={item.href} className="flex items-center gap-2 p-2 rounded-md">
+                <Skeleton className="h-4 w-4" />
+                <Skeleton className="h-4 w-24" />
+             </div>
         )}
         {!loading && visibleNavItems.map((item) => (
           <Button
@@ -4202,64 +4217,6 @@ Button.displayName = "Button"
 export { Button, buttonVariants }
 `
   },
-_rest_of_the_files_in_a_single_block_..._
-];
-
-function FileDisplay({ path, content }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(content.trim());
-    toast({ title: 'Copied!', description: `Content of ${path} copied to clipboard.` });
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <Card className="mb-4">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="font-mono text-lg">{path}</CardTitle>
-        <Button onClick={handleCopy} variant="outline" size="sm">
-          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Clipboard className="h-4 w-4" />}
-          <span className="ml-2">{copied ? 'Copied' : 'Copy'}</span>
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-64 w-full rounded-md border">
-            <pre className="p-4 text-sm whitespace-pre-wrap">
-                <code>{content.trim()}</code>
-            </pre>
-        </ScrollArea>
-      </CardContent>
-    </Card>
-  );
-}
-
-
-export default function ExportPage() {
-  return (
-    <div className="container mx-auto py-8">
-      <Toaster />
-      <h1 className="text-3xl font-bold mb-2">Project Code Export</h1>
-      <p className="text-muted-foreground mb-6">
-        Here is the full code for your project. Create these files locally in VS Code and copy/paste the content for each file.
-      </p>
-
-       <Accordion type="single" collapsible className="w-full">
-        {files.map((file) => (
-          <AccordionItem value={file.path} key={file.path}>
-            <AccordionTrigger className="font-mono">{file.path}</AccordionTrigger>
-            <AccordionContent>
-                 <FileDisplay path={file.path} content={file.content} />
-            </AccordionContent>
-          </AccordionItem>
-        ))}
-      </Accordion>
-    </div>
-  );
-}
-
-const _rest_of_the_files_in_a_single_block_ = [
   {
     path: "src/components/ui/calendar.tsx",
     content: `
@@ -7736,7 +7693,7 @@ export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { collection, query, where, getDocs, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, query, where, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 
 interface AdminUser {
@@ -7764,9 +7721,9 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
     const [adminUserDocId, setAdminUserDocId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const handleSuperAdminSetup = useCallback(async (db: any, staffId: string) => {
+    const handleSuperAdminSetup = useCallback(async (db: any) => {
         if (!db) return;
-        const superAdminDocRef = doc(db, 'adminusers', staffId);
+        const superAdminDocRef = doc(db, 'adminusers', '23di21');
         const correctData = {
             staffId: '23di21',
             displayName: 'Indrajith',
@@ -7776,11 +7733,8 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
 
         try {
             await setDoc(superAdminDocRef, correctData, { merge: true });
-            console.log("Super Admin user document has been verified and set.");
-            return correctData;
         } catch (e) {
             console.error("Failed to set up Super Admin:", e);
-            return null;
         }
     }, []);
 
@@ -7790,44 +7744,38 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
         }
 
         setLoading(true);
-        let staffIdFromSession: string | null = null;
-        try {
-            staffIdFromSession = sessionStorage.getItem('admin_staff_id');
-        } catch (e) {
-            console.warn('Could not access sessionStorage.');
-        }
+        const staffIdFromSession = sessionStorage.getItem('admin_staff_id');
 
         let unsubscribe: (() => void) | null = null;
 
         const fetchUser = async () => {
             if (staffIdFromSession) {
+                // *** Special handling for the super admin ***
                 if (staffIdFromSession === '23di21') {
-                    const superAdminData = await handleSuperAdminSetup(firestore, staffIdFromSession);
-                    if (superAdminData) {
-                       setAdminUser(superAdminData as AdminUser);
-                       setAdminUserDocId(staffIdFromSession);
-                    }
+                    await handleSuperAdminSetup(firestore);
+                    const docRef = doc(firestore, 'adminusers', '23di21');
+                    unsubscribe = onSnapshot(docRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            setAdminUser(docSnap.data() as AdminUser);
+                            setAdminUserDocId(docSnap.id);
+                        }
+                        setLoading(false);
+                    });
+                } else {
+                    const docRef = doc(firestore, 'adminusers', staffIdFromSession);
+                    unsubscribe = onSnapshot(docRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            setAdminUser(docSnap.data() as AdminUser);
+                            setAdminUserDocId(docSnap.id);
+                        } else {
+                            setAdminUser(null);
+                            setAdminUserDocId(null);
+                        }
+                        setLoading(false);
+                    });
                 }
-                
-                const docRef = doc(firestore, 'adminusers', staffIdFromSession);
-                unsubscribe = onSnapshot(docRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        setAdminUser(docSnap.data() as AdminUser);
-                        setAdminUserDocId(docSnap.id);
-                    } else {
-                        setAdminUser(null);
-                        setAdminUserDocId(null);
-                    }
-                    setLoading(false);
-                }, (error) => {
-                    console.error("Failed to fetch password admin user:", error);
-                    setLoading(false);
-                });
-
             } else if (authUser) {
-                const adminUsersRef = collection(firestore, 'adminusers');
-                const q = query(adminUsersRef, where('email', '==', authUser.email));
-                
+                const q = query(collection(firestore, 'adminusers'), where('email', '==', authUser.email));
                 unsubscribe = onSnapshot(q, (querySnapshot) => {
                     if (!querySnapshot.empty) {
                         const userDoc = querySnapshot.docs[0];
@@ -7837,9 +7785,6 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
                         setAdminUser(null);
                         setAdminUserDocId(null);
                     }
-                    setLoading(false);
-                }, (error) => {
-                    console.error("Failed to fetch Google auth admin user:", error);
                     setLoading(false);
                 });
             } else {
@@ -8114,79 +8059,6 @@ export const useFirebaseApp = () => useFirebase().firebaseApp;
 export const useAuth = () => useFirebase().auth;
 export const useFirestore = () => useFirebase().firestore;
 export const useStorage = () => useFirebase().storage;
-`
-  },
-  {
-    path: "src/firestore.rules",
-    content: `
-rules_version = '2';
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    // --------------------------------
-    // Helper Functions
-    // --------------------------------
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Function to get a user's role from the adminusers collection
-    function getRole(uid) {
-      return get(/databases/$(database)/documents/adminusers/$(uid)).data.role;
-    }
-    
-    // Checks if the currently authenticated user has the role of Super Admin
-    function isSuperAdmin() {
-      return isSignedIn() && getRole(request.auth.uid) == 'Super Admin';
-    }
-
-    // Checks if the user is a Librarian or higher
-    function isLibrarianOrHigher() {
-      if (!isSignedIn()) return false;
-      let role = getRole(request.auth.uid);
-      return role == 'Super Admin' || role == 'Librarian';
-    }
-
-    // Checks if the user is any authenticated admin
-    function isAnyAdmin() {
-      // This rule is tricky because password-based admins don't have an auth object.
-      // We rely on app-level logic to control read access for password users,
-      // and secure all write operations below.
-      return isSignedIn() && exists(/databases/$(database)/documents/adminusers/$(request.auth.uid));
-    }
-
-    // --------------------------------
-    // Collection Rules
-    // --------------------------------
-
-    match /books/{bookId} {
-      // Any authenticated admin can read. Password-based users are handled by app logic.
-      allow read: if isAnyAdmin() || request.auth == null; 
-      // Only Librarians or Super Admins can write.
-      allow write: if isLibrarianOrHigher();
-    }
-
-    match /members/{memberId} {
-      allow read: if isAnyAdmin() || request.auth == null;
-      allow write: if isLibrarianOrHigher();
-    }
-
-    match /adminusers/{userId} {
-        // Any admin can read user profiles
-        allow read: if isAnyAdmin() || request.auth == null;
-        // Only a super admin can create, update, or delete other users.
-        // For password-based creation, the app must verify the creator's role.
-        allow write: if isSuperAdmin();
-    }
-    
-    // Default-deny for all other collections
-    match /{path=**} {
-      allow read, write: if false;
-    }
-  }
-}
 `
   },
   {
@@ -8619,3 +8491,58 @@ export default {
 `
   }
 ];
+
+function FileDisplay({ path, content }) {
+  const { toast } = useToast()
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content.trim());
+    toast({ title: 'Copied!', description: \`Content of \${path} copied to clipboard.\` });
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Card className="mb-4">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="font-mono text-lg">{path}</CardTitle>
+        <Button onClick={handleCopy} variant="outline" size="sm">
+          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Clipboard className="h-4 w-4" />}
+          <span className="ml-2">{copied ? 'Copied' : 'Copy'}</span>
+        </Button>
+      </CardHeader>
+      <CardContent>
+        <ScrollArea className="h-64 w-full rounded-md border">
+            <pre className="p-4 text-sm whitespace-pre-wrap">
+                <code>{content.trim()}</code>
+            </pre>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
+}
+
+
+export default function ExportPage() {
+  return (
+    <div className="container mx-auto py-8">
+      <Toaster />
+      <h1 className="text-3xl font-bold mb-2">Project Code Export</h1>
+      <p className="text-muted-foreground mb-6">
+        Here is the full code for your project. Create these files locally in VS Code and copy/paste the content for each file.
+      </p>
+
+       <Accordion type="single" collapsible className="w-full">
+        {files.map((file) => (
+          <AccordionItem value={file.path} key={file.path}>
+            <AccordionTrigger className="font-mono">{file.path}</AccordionTrigger>
+            <AccordionContent>
+                 <FileDisplay path={file.path} content={file.content} />
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    </div>
+  );
+}

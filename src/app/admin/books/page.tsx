@@ -205,12 +205,7 @@ function BooksPageContent() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isAddBookOpen, setAddBookOpen] = useState(false);
-  const { adminUser, loading: adminLoading } = useAdminUser();
-
-  const canWrite = useMemo(() => {
-    if (adminLoading || !adminUser) return false;
-    return adminUser.role === 'Super Admin' || adminUser.role === 'Librarian';
-  }, [adminUser, adminLoading]);
+  const { loading: adminLoading } = useAdminUser();
 
   const booksQuery = useMemo(() => {
     if (!firestore) return null;
@@ -254,7 +249,7 @@ function BooksPageContent() {
                     </div>
                      <Dialog open={isAddBookOpen} onOpenChange={setAddBookOpen}>
                         <DialogTrigger asChild>
-                           <Button disabled={loading || !canWrite}><BookUp className="mr-2 h-4 w-4" /> Add New Book</Button>
+                           <Button disabled={loading}><BookUp className="mr-2 h-4 w-4" /> Add New Book</Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[425px]">
                             <DialogHeader>
@@ -307,7 +302,6 @@ function BooksPageContent() {
                         </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      {canWrite && (
                        <AlertDialog>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -338,7 +332,6 @@ function BooksPageContent() {
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
-                      )}
                     </TableCell>
                   </TableRow>
                 ))}

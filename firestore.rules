@@ -3,65 +3,9 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // --------------------------------
-    // Helper Functions
-    // --------------------------------
-
-    function isSignedIn() {
-      return request.auth != null;
+    
+    match /{document=**} {
+      allow read, write: if true;
     }
-
-    function getRole(uid) {
-        return get(/databases/$(database)/documents/adminusers/$(uid)).data.role;
-    }
-
-    function isSuperAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/adminusers/$(request.auth.uid)).data.role == 'Super Admin';
-    }
-
-    function isLibrarianOrHigher() {
-       if (!isSignedIn()) return false;
-      let role = get(/databases/$(database)/documents/adminusers/$(request.auth.uid)).data.role;
-      return role == 'Super Admin' || role == 'Librarian';
-    }
-
-    function isAnyAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/adminusers/$(request.auth.uid));
-    }
-
-    // --------------------------------
-    // Collection Rules
-    // --------------------------------
-
-    match /books/{bookId} {
-      allow read: if true;
-      allow write: if isLibrarianOrHigher() || request.resource.data.__admin_id__ != null; 
-    }
-
-    match /members/{memberId} {
-      allow read: if true;
-      allow write: if isLibrarianOrHigher() || request.resource.data.__admin_id__ != null;
-    }
-
-    match /adminusers/{userId} {
-        allow read: if true;
-        allow update: if request.auth.uid == userId || isSuperAdmin();
-        
-        // Let super admins create/delete users.
-        // For password based super admin, check a property on the resource being written
-        allow create, delete: if isSuperAdmin() || request.resource.data.__admin_id__ == 'super_admin_23di21';
-    }
-
-    // Default-deny for all other collections unless specified.
-    match /circulationLogs/{logId} { allow read, write: if isLibrarianOrHigher() || request.resource.data.__admin_id__ != null; }
-    match /rfidTags/{tagId} { allow read, write: if isLibrarianOrHigher() || request.resource.data.__admin_id__ != null; }
-    match /inventoryScans/{scanId} { allow read, write: if isLibrarianOrHigher() || request.resource.data.__admin_id__ != null; }
-    match /securityAlerts/{alertId} { allow read, write: if isLibrarianOrHigher() || request.resource.data.__admin_id__ != null; }
-    match /reservations/{reservationId} { allow read, write: if isLibrarianOrHigher() || request.resource.data.__admin_id__ != null; }
-    match /fines/{fineId} { allow read, write: if isLibrarianOrHigher() || request.resource.data.__admin_id__ != null; }
-    match /reports/{reportId} { allow read, write: if isSuperAdmin() || request.resource.data.__admin_id__ == 'super_admin_23di21'; }
-    match /systemSettings/{settingId} { allow read, write: if isSuperAdmin() || request.resource.data.__admin_id__ == 'super_admin_23di21'; }
-    match /adminActivityLogs/{logId} { allow read: if true; allow create: if isAnyAdmin() || request.resource.data.__admin_id__ != null; }
   }
 }

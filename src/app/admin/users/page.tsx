@@ -68,25 +68,18 @@ function AddUserForm({ onFinished }: { onFinished: () => void }) {
             // Use staffId for the document ID for new users for consistency
             const userDocRef = doc(firestore, 'adminusers', values.staffId);
             
-            const payload: any = {
+            await setDoc(userDocRef, {
                 ...values,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
-            };
-
-            // Add the creator's ID for the security rule check
-            if (adminUser.role === 'Super Admin') {
-                payload['__admin_id__'] = adminUser.staffId === '23di21' ? 'super_admin_23di21' : adminUser.uid;
-            }
-
-            await setDoc(userDocRef, payload);
+            });
 
             toast({ title: 'Success', description: 'New user has been created.' });
             onFinished();
             form.reset();
         } catch (error: any) {
             console.error("Error adding user: ", error);
-            toast({ variant: 'destructive', title: 'Error Creating User', description: error.message || 'Missing or insufficient permissions.' });
+            toast({ variant: 'destructive', title: 'Error Creating User', description: error.message || 'An error occurred.' });
         } finally {
             setIsSubmitting(false);
         }
@@ -150,6 +143,7 @@ function AddUserForm({ onFinished }: { onFinished: () => void }) {
                                     <SelectItem value="Librarian">Librarian</SelectItem>
                                     <SelectItem value="Assistant">Assistant</SelectItem>
                                     <SelectItem value="Logger">Logger (Read-Only)</SelectItem>
+                                     <SelectItem value="Super Admin">Super Admin</SelectItem>
                                 </SelectContent>
                             </Select>
                             <FormMessage />
@@ -174,11 +168,6 @@ function UsersPageContent() {
   const { toast } = useToast();
   const [isAddUserOpen, setAddUserOpen] = useState(false);
   const { adminUser, loading: adminLoading } = useAdminUser();
-
-  const isSuperAdmin = useMemo(() => {
-    if (adminLoading || !adminUser) return false;
-    return adminUser.role === 'Super Admin';
-  }, [adminUser, adminLoading]);
 
   const usersQuery = useMemo(() => {
     if (!firestore) return null;
@@ -227,7 +216,7 @@ function UsersPageContent() {
                     </div>
                      <Dialog open={isAddUserOpen} onOpenChange={setAddUserOpen}>
                         <DialogTrigger asChild>
-                           <Button disabled={loading || !isSuperAdmin}><UserPlus className="mr-2 h-4 w-4" /> Add New User</Button>
+                           <Button disabled={loading}><UserPlus className="mr-2 h-4 w-4" /> Add New User</Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[425px]">
                             <DialogHeader>
@@ -289,7 +278,7 @@ function UsersPageContent() {
                     <TableCell>{user.staffId || 'N/A'}</TableCell>
                     <TableCell>{user.email || 'N/A'}</TableCell>
                     <TableCell className="text-right">
-                      {isSuperAdmin && adminUser?.staffId !== user.staffId && (
+                      {adminUser?.staffId !== user.staffId && (
                        <AlertDialog>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>

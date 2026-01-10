@@ -223,12 +223,7 @@ function MembersPageContent() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isAddMemberOpen, setAddMemberOpen] = useState(false);
-  const { adminUser, loading: adminLoading } = useAdminUser();
-  
-  const canWrite = useMemo(() => {
-    if (adminLoading || !adminUser) return false;
-    return adminUser.role === 'Super Admin' || adminUser.role === 'Librarian';
-  }, [adminUser, adminLoading]);
+  const { loading: adminLoading } = useAdminUser();
 
   const membersQuery = useMemo(() => {
     if (!firestore) return null;
@@ -272,7 +267,7 @@ function MembersPageContent() {
                     </div>
                      <Dialog open={isAddMemberOpen} onOpenChange={setAddMemberOpen}>
                         <DialogTrigger asChild>
-                           <Button disabled={loading || !canWrite}><UserPlus className="mr-2 h-4 w-4" /> Add New Member</Button>
+                           <Button disabled={loading}><UserPlus className="mr-2 h-4 w-4" /> Add New Member</Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[425px]">
                             <DialogHeader>
@@ -326,7 +321,6 @@ function MembersPageContent() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      {canWrite && (
                        <AlertDialog>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -357,7 +351,6 @@ function MembersPageContent() {
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
-                      )}
                     </TableCell>
                   </TableRow>
                 ))}

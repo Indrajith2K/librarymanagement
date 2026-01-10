@@ -2,7 +2,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { collection, query, where, getDocs, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, query, where, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 
 interface AdminUser {
@@ -32,18 +32,16 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
 
     const handleSuperAdminSetup = useCallback(async (db: any) => {
         if (!db) return;
-        // The document ID for the super admin is now derived from the staffId to be consistent
         const superAdminDocRef = doc(db, 'adminusers', '23di21');
         const correctData = {
             staffId: '23di21',
             displayName: 'Indrajith',
             role: 'Super Admin',
-            password: '12345', // This should be managed securely, but keeping for consistency
+            password: '12345',
         };
 
         try {
             await setDoc(superAdminDocRef, correctData, { merge: true });
-            console.log("Super Admin user document has been verified and set.");
         } catch (e) {
             console.error("Failed to set up Super Admin:", e);
         }
@@ -55,20 +53,17 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
         }
 
         setLoading(true);
-        const staffId = sessionStorage.getItem('admin_staff_id');
-
         let unsubscribe: (() => void) | null = null;
 
         const fetchUser = async () => {
-            if (staffId) {
-                // *** CRITICAL FIX: Force Super Admin setup for 23di21 ***
-                if (staffId === '23di21') {
+            const staffIdFromSession = sessionStorage.getItem('admin_staff_id');
+
+            if (staffIdFromSession) {
+                // This logic is for password-based logins
+                if (staffIdFromSession === '23di21') {
                     await handleSuperAdminSetup(firestore);
                 }
-
-                // Use the staffId as the documentId for password-based users
-                const docRef = doc(firestore, 'adminusers', staffId);
-
+                const docRef = doc(firestore, 'adminusers', staffIdFromSession);
                 unsubscribe = onSnapshot(docRef, (docSnap) => {
                     if (docSnap.exists()) {
                         setAdminUser(docSnap.data() as AdminUser);
@@ -79,15 +74,12 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
                     }
                     setLoading(false);
                 }, (error) => {
-                    console.error("Failed to fetch password admin user:", error);
+                    console.error("Firestore snapshot error for password user:", error);
                     setLoading(false);
                 });
-
             } else if (authUser) {
-                // For Google Auth users, we find their doc via email
-                const adminUsersRef = collection(firestore, 'adminusers');
-                const q = query(adminUsersRef, where('email', '==', authUser.email));
-                
+                // This logic is for Google authenticated users
+                const q = query(collection(firestore, 'adminusers'), where('email', '==', authUser.email));
                 unsubscribe = onSnapshot(q, (querySnapshot) => {
                     if (!querySnapshot.empty) {
                         const userDoc = querySnapshot.docs[0];
@@ -99,10 +91,11 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
                     }
                     setLoading(false);
                 }, (error) => {
-                    console.error("Failed to fetch Google auth admin user:", error);
+                    console.error("Firestore snapshot error for auth user:", error);
                     setLoading(false);
                 });
             } else {
+                // No user logged in
                 setAdminUser(null);
                 setAdminUserDocId(null);
                 setLoading(false);

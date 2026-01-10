@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -80,7 +81,7 @@ function AdminDashboardContent() {
   const loading = authLoading || adminUserLoading;
 
   useEffect(() => {
-    const isPasswordAdmin = !!sessionStorage.getItem('admin_staff_id');
+    const isPasswordAdmin = !!sessionStorage.getItem('admin_doc_id');
     if (!loading && !user && !isPasswordAdmin) {
       router.push('/admin/login');
     }
@@ -101,7 +102,7 @@ function AdminDashboardContent() {
     );
   }
   
-  const isPasswordAdmin = !!sessionStorage.getItem('admin_staff_id');
+  const isPasswordAdmin = !!sessionStorage.getItem('admin_doc_id');
   if (!user && !isPasswordAdmin) {
      return (
          <div className="flex items-center justify-center min-h-screen">

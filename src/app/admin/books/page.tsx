@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -253,7 +254,7 @@ function BooksPageContent() {
                     </div>
                      <Dialog open={isAddBookOpen} onOpenChange={setAddBookOpen}>
                         <DialogTrigger asChild>
-                           <Button disabled={!canWrite}><BookUp className="mr-2 h-4 w-4" /> Add New Book</Button>
+                           <Button disabled={loading || !canWrite}><BookUp className="mr-2 h-4 w-4" /> Add New Book</Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[425px]">
                             <DialogHeader>
@@ -310,7 +311,7 @@ function BooksPageContent() {
                        <AlertDialog>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
+                              <Button variant="ghost" size="icon" disabled={loading}>
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>

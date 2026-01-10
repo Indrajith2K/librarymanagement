@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -271,7 +272,7 @@ function MembersPageContent() {
                     </div>
                      <Dialog open={isAddMemberOpen} onOpenChange={setAddMemberOpen}>
                         <DialogTrigger asChild>
-                           <Button disabled={!canWrite}><UserPlus className="mr-2 h-4 w-4" /> Add New Member</Button>
+                           <Button disabled={loading || !canWrite}><UserPlus className="mr-2 h-4 w-4" /> Add New Member</Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[425px]">
                             <DialogHeader>
@@ -329,7 +330,7 @@ function MembersPageContent() {
                        <AlertDialog>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
+                              <Button variant="ghost" size="icon" disabled={loading}>
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>

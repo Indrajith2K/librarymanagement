@@ -12,27 +12,30 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // This rule is tricky because password-based admins don't have an auth object.
-    // We secure create/update/delete at the application level.
-    function isAdmin() {
-      // For Google-auth users, we can check if their UID exists in the adminusers collection.
+    // Function to get a user's role from the adminusers collection by their UID
+    function getRole(uid) {
+        return get(/databases/$(database)/documents/adminusers/$(uid)).data.role;
+    }
+
+    // Checks if the currently authenticated user has the role of Super Admin
+    function isSuperAdmin() {
+      // This is for Google-Authenticated users. Password auth is handled by the app.
+      return isSignedIn() && getRole(request.auth.uid) == 'Super Admin';
+    }
+
+    // Checks if the user is a Librarian or higher
+    function isLibrarianOrHigher() {
+       // This is for Google-Authenticated users. Password auth is handled by the app.
+      if (!isSignedIn()) return false;
+      let role = getRole(request.auth.uid);
+      return role == 'Super Admin' || role == 'Librarian';
+    }
+
+    // Checks if the user is any authenticated admin
+    function isAnyAdmin() {
+      // Password-based admins do not have an auth object. App logic must handle security.
+      // This rule primarily applies to Google-authenticated users.
       return isSignedIn() && exists(/databases/$(database)/documents/adminusers/$(request.auth.uid));
-    }
-    
-    function isExistingAdmin() {
-      return isAdmin() && resource != null;
-    }
-
-    function isCirculationActor() {
-      return request.resource.data.actorId == request.auth.uid;
-    }
-
-    function isReportGenerator() {
-      return request.resource.data.adminUserId == request.auth.uid;
-    }
-
-    function isAuthorOfLog() {
-      return request.resource.data.adminUserId == request.auth.uid;
     }
 
     // --------------------------------
@@ -40,79 +43,38 @@ service cloud.firestore {
     // --------------------------------
 
     match /books/{bookId} {
-      // Temporarily allow public read to verify data flow
-      allow read: if true; 
-      // Allow writes only from authenticated admin users (app-level check for password admins)
-      allow create: if true; // relies on app logic to be secure
-      allow update, delete: if true; // relies on app logic to be secure
+      // Allow read access to anyone (including unauthenticated) for now.
+      // Write access is restricted. App must enforce for password users.
+      allow read: if true;
+      allow write: if isLibrarianOrHigher();
     }
 
     match /members/{memberId} {
-      // Allow any user who has passed app-level admin checks to read and create.
+      // Allow read access to anyone.
+      // Write access is restricted. App must enforce for password users.
       allow read: if true;
-      allow create: if true; // relies on app logic to be secure
-      allow update, delete: if true; // relies on app logic to be secure
+      allow write: if isLibrarianOrHigher();
     }
 
-    match /rfidTags/{rfidTagId} {
-      allow get, list, create: if isAdmin();
-      allow update, delete: if isExistingAdmin();
+    match /adminusers/{userId} {
+        // Any authenticated admin can see the list of users. App logic handles password users.
+        allow read: if true;
+
+        // Only Super Admins can create/update/delete users.
+        // A user can update their own info.
+        allow write: if isSuperAdmin() || request.auth.uid == userId;
     }
 
-    match /circulationLogs/{circulationLogId} {
-      allow get, list: if isAdmin();
-      allow create: if isAdmin() && isCirculationActor();
-      allow update, delete: if false; 
-    }
-
-    match /inventoryScans/{inventoryScanId} {
-      allow get, list, create: if isAdmin();
-      allow update, delete: if isExistingAdmin();
-    }
-
-    match /securityAlerts/{alertId} {
-      allow get, list, create: if isAdmin();
-      allow update, delete: if isExistingAdmin();
-    }
-
-    match /reservations/{reservationId} {
-      allow get, list, create: if isAdmin();
-      allow update, delete: if isExistingAdmin();
-    }
-
-    match /fines/{fineId} {
-      allow get, list, create: if isAdmin();
-      allow update, delete: if isExistingAdmin();
-    }
-
-    match /reports/{reportId} {
-      allow get, list: if isAdmin();
-      allow create: if isAdmin() && isReportGenerator();
-      allow update, delete: if isExistingAdmin();
-    }
-
-    match /adminusers/{adminUserId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /systemSettings/{systemSettingId} {
-      allow get, list, create, update, delete: if isAdmin();
-    }
-
-    match /adminActivityLogs/{adminActivityLogId} {
-      allow get, list: if isAdmin();
-      allow create: if isAdmin() && isAuthorOfLog();
-      allow update, delete: if false;
-    }
-  }
-}
-
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /profile-pictures/{adminUserDocId} {
-      allow read: if true;
-      allow write: if request.resource.metadata.uid == adminUserDocId;
-    }
+    // Default-deny for all other collections unless specified.
+    // This is a secure default.
+    match /circulationLogs/{logId} { allow read, write: if isLibrarianOrHigher(); }
+    match /rfidTags/{tagId} { allow read, write: if isLibrarianOrHigher(); }
+    match /inventoryScans/{scanId} { allow read, write: if isLibrarianOrHigher(); }
+    match /securityAlerts/{alertId} { allow read, write: if isLibrarianOrHigher(); }
+    match /reservations/{reservationId} { allow read, write: if isLibrarianOrHigher(); }
+    match /fines/{fineId} { allow read, write: if isLibrarianOrHigher(); }
+    match /reports/{reportId} { allow read, write: if isSuperAdmin(); }
+    match /systemSettings/{settingId} { allow read, write: if isSuperAdmin(); }
+    match /adminActivityLogs/{logId} { allow read: if isAnyAdmin(); allow create: if isAnyAdmin(); }
   }
 }

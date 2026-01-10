@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { MoreHorizontal, Search, UserPlus, Trash2 } from 'lucide-react';
 import { AdminUserProvider, useAdminUser } from '@/context/AdminUserContext';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, addDoc, serverTimestamp, doc, deleteDoc, setDoc } from 'firebase/firestore';
+import { collection, query, serverTimestamp, doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { useForm } from 'react-hook-form';
@@ -45,6 +45,7 @@ type AdminUserFormData = z.infer<typeof adminUserSchema>;
 function AddUserForm({ onFinished }: { onFinished: () => void }) {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { adminUser } = useAdminUser();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const form = useForm<AdminUserFormData>({
@@ -218,7 +219,7 @@ function UsersPageContent() {
                     </div>
                      <Dialog open={isAddUserOpen} onOpenChange={setAddUserOpen}>
                         <DialogTrigger asChild>
-                           <Button disabled={!isSuperAdmin}><UserPlus className="mr-2 h-4 w-4" /> Add New User</Button>
+                           <Button disabled={loading || !isSuperAdmin}><UserPlus className="mr-2 h-4 w-4" /> Add New User</Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[425px]">
                             <DialogHeader>
@@ -284,7 +285,7 @@ function UsersPageContent() {
                        <AlertDialog>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
+                              <Button variant="ghost" size="icon" disabled={loading}>
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>

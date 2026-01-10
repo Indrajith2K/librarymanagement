@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Logo } from '@/components/Logo';
@@ -11,6 +12,7 @@ import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useAdminUser } from '@/context/AdminUserContext';
 import { useMemo } from 'react';
+import { Skeleton } from '../ui/skeleton';
 
 const navItems = [
   { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -40,7 +42,7 @@ export function AdminSidebar() {
   };
 
   const visibleNavItems = useMemo(() => {
-    if (loading) return []; // Don't show any items while loading
+    if (loading) return []; // Return an empty array while loading to prevent flash of incorrect items
     return navItems.filter(item => {
       if (!item.requiredRole) return true;
       return adminUser?.role === item.requiredRole;
@@ -55,15 +57,10 @@ export function AdminSidebar() {
       </div>
       <nav className="flex flex-col p-4 space-y-2 flex-grow">
         {loading && navItems.map(item => 
-             <Button
-                key={item.href}
-                variant={'ghost'}
-                className="justify-start"
-                disabled
-            >
-                <item.icon className="mr-2 h-4 w-4" />
-                {item.label}
-            </Button>
+             <div key={item.href} className="flex items-center gap-2 p-2 rounded-md">
+                <Skeleton className="h-5 w-5" />
+                <Skeleton className="h-4 w-24" />
+             </div>
         )}
         {!loading && visibleNavItems.map((item) => (
           <Button

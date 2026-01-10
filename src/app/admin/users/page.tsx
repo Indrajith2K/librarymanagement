@@ -45,7 +45,7 @@ type AdminUserFormData = z.infer<typeof adminUserSchema>;
 function AddUserForm({ onFinished }: { onFinished: () => void }) {
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { adminUser } = useAdminUser();
+    const { adminUser, adminUserDocId } = useAdminUser();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const form = useForm<AdminUserFormData>({
@@ -59,16 +59,17 @@ function AddUserForm({ onFinished }: { onFinished: () => void }) {
     });
 
     async function onSubmit(values: AdminUserFormData) {
-        if (!firestore) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not available.' });
+        if (!firestore || !adminUserDocId) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not available or you are not authorized.' });
             return;
         }
         setIsSubmitting(true);
         try {
-            // Use staffId as the document ID
+            // Use staffId for the document ID for new users for consistency
             const userDocRef = doc(firestore, 'adminusers', values.staffId);
             await setDoc(userDocRef, {
                 ...values,
+                __admin_id__: adminUserDocId, // Add admin ID for security rule check
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
             });

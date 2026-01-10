@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { UserCircle2 } from "lucide-react";
 import { useAuth, useFirestore } from "@/firebase";
 import { GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -94,15 +94,17 @@ export default function AdminLoginPage() {
     setPasswordLoading(true);
 
     try {
-        const userDocRef = doc(firestore, "adminusers", staffId);
-        const adminDoc = await getDoc(userDocRef);
+        const adminUsersRef = collection(firestore, "adminusers");
+        const q = query(adminUsersRef, where("staffId", "==", staffId));
+        const querySnapshot = await getDocs(q);
 
-        if (!adminDoc.exists()) {
+        if (querySnapshot.empty) {
             toast({ variant: "destructive", title: "Login Failed", description: "Staff ID not found." });
             setPasswordLoading(false);
             return;
         }
 
+        const adminDoc = querySnapshot.docs[0];
         const admin = adminDoc.data();
         
         // IMPORTANT: Storing and checking plaintext passwords is very insecure.
@@ -112,8 +114,8 @@ export default function AdminLoginPage() {
                 title: "Login Successful",
                 description: "Redirecting to the admin dashboard...",
             });
-            // Store the staffId in session storage
-            sessionStorage.setItem('admin_staff_id', admin.staffId);
+            // Store the document ID in session storage
+            sessionStorage.setItem('admin_doc_id', adminDoc.id);
             router.push('/admin/dashboard');
         } else {
              toast({ variant: "destructive", title: "Login Failed", description: "Incorrect Password." });

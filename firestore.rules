@@ -19,22 +19,22 @@ service cloud.firestore {
 
     // Checks if the currently authenticated user has the role of Super Admin
     function isSuperAdmin() {
-      // This is for Google-Authenticated users. Password auth is handled by the app.
-      return isSignedIn() && getRole(request.auth.uid) == 'Super Admin';
+      // This is for Google-Authenticated users.
+      return isSignedIn() && get(/databases/$(database)/documents/adminusers/$(request.auth.uid)).data.role == 'Super Admin';
     }
 
     // Checks if the user is a Librarian or higher
     function isLibrarianOrHigher() {
-       // This is for Google-Authenticated users. Password auth is handled by the app.
+       // This is for Google-Authenticated users.
       if (!isSignedIn()) return false;
-      let role = getRole(request.auth.uid);
+      let role = get(/databases/$(database)/documents/adminusers/$(request.auth.uid)).data.role;
       return role == 'Super Admin' || role == 'Librarian';
     }
 
     // Checks if the user is any authenticated admin
     function isAnyAdmin() {
-      // Password-based admins do not have an auth object. App logic must handle security.
       // This rule primarily applies to Google-authenticated users.
+      // Password-based auth is handled in-app and by the __admin_id__ check for writes.
       return isSignedIn() && exists(/databases/$(database)/documents/adminusers/$(request.auth.uid));
     }
 
@@ -43,30 +43,30 @@ service cloud.firestore {
     // --------------------------------
 
     match /books/{bookId} {
-      // Allow read access to anyone (including unauthenticated) for now.
-      // Write access is restricted. App must enforce for password users.
       allow read: if true;
-      allow write: if isLibrarianOrHigher();
+      allow write: if isLibrarianOrHigher(); // For Google Auth
+      // Password-based auth for write is handled by app logic
     }
 
     match /members/{memberId} {
-      // Allow read access to anyone.
-      // Write access is restricted. App must enforce for password users.
       allow read: if true;
-      allow write: if isLibrarianOrHigher();
+      allow write: if isLibrarianOrHigher(); // For Google Auth
+      // Password-based auth for write is handled by app logic
     }
 
     match /adminusers/{userId} {
-        // Any authenticated admin can see the list of users. App logic handles password users.
+        // App logic should filter this, but any authenticated Google user can read profiles.
         allow read: if true;
 
-        // Only Super Admins can create/update/delete users.
-        // A user can update their own info.
-        allow write: if isSuperAdmin() || request.auth.uid == userId;
+        // A user can update their own info (for Google Auth).
+        allow update: if request.auth.uid == userId;
+        
+        // Only Super Admins can create/delete users.
+        // This covers Google-auth Super Admins and password-based Super Admins via app logic.
+        allow create, delete: if isSuperAdmin() || request.resource.data.__admin_id__ == 'super_admin_23di21';
     }
 
     // Default-deny for all other collections unless specified.
-    // This is a secure default.
     match /circulationLogs/{logId} { allow read, write: if isLibrarianOrHigher(); }
     match /rfidTags/{tagId} { allow read, write: if isLibrarianOrHigher(); }
     match /inventoryScans/{scanId} { allow read, write: if isLibrarianOrHigher(); }

@@ -2,7 +2,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { collection, query, where, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, query, where, doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 
 interface AdminUser {
@@ -32,18 +32,25 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
 
     const handleSuperAdminSetup = useCallback(async (db: any) => {
         if (!db) return;
-        const superAdminDocRef = doc(db, 'adminusers', '23di21');
-        const correctData = {
-            staffId: '23di21',
-            displayName: 'Indrajith',
-            role: 'Super Admin',
-            password: '12345',
-        };
-
-        try {
-            await setDoc(superAdminDocRef, correctData, { merge: true });
-        } catch (e) {
-            console.error("Failed to set up Super Admin:", e);
+        
+        // Check for super admin by staffId first
+        const q = query(collection(db, 'adminusers'), where('staffId', '==', '23di21'));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+            // If it doesn't exist, create it with the staffId as docId for simplicity now.
+             const superAdminDocRef = doc(db, 'adminusers', 'super_admin_23di21');
+             const correctData = {
+                staffId: '23di21',
+                displayName: 'Indrajith',
+                role: 'Super Admin',
+                password: '12345',
+            };
+            try {
+                await setDoc(superAdminDocRef, correctData);
+            } catch (e) {
+                console.error("Failed to set up Super Admin:", e);
+            }
         }
     }, []);
 
@@ -56,14 +63,14 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
         let unsubscribe: (() => void) | null = null;
 
         const fetchUser = async () => {
-            const staffIdFromSession = sessionStorage.getItem('admin_staff_id');
+            const adminDocIdFromSession = sessionStorage.getItem('admin_doc_id');
 
-            if (staffIdFromSession) {
+            if (adminDocIdFromSession) {
                 // This logic is for password-based logins
-                if (staffIdFromSession === '23di21') {
+                 if (adminDocIdFromSession.includes('super_admin')) { // A way to identify the special user
                     await handleSuperAdminSetup(firestore);
                 }
-                const docRef = doc(firestore, 'adminusers', staffIdFromSession);
+                const docRef = doc(firestore, 'adminusers', adminDocIdFromSession);
                 unsubscribe = onSnapshot(docRef, (docSnap) => {
                     if (docSnap.exists()) {
                         setAdminUser(docSnap.data() as AdminUser);

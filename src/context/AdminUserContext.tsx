@@ -2,7 +2,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { collection, query, where, doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
+import { collection, query, where, doc, onSnapshot, setDoc, getDocs } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 
 interface AdminUser {
@@ -32,15 +32,12 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
 
     const handleSuperAdminSetup = useCallback(async (db: any) => {
         if (!db) return;
-        
-        // Check for super admin by staffId first
         const q = query(collection(db, 'adminusers'), where('staffId', '==', '23di21'));
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            // If it doesn't exist, create it with the staffId as docId for simplicity now.
-             const superAdminDocRef = doc(db, 'adminusers', 'super_admin_23di21');
-             const correctData = {
+            const superAdminDocRef = doc(db, 'adminusers', 'super_admin_23di21');
+            const correctData = {
                 staffId: '23di21',
                 displayName: 'Indrajith',
                 role: 'Super Admin',
@@ -66,8 +63,7 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
             const adminDocIdFromSession = sessionStorage.getItem('admin_doc_id');
 
             if (adminDocIdFromSession) {
-                // This logic is for password-based logins
-                 if (adminDocIdFromSession.includes('super_admin')) { // A way to identify the special user
+                if (adminDocIdFromSession.includes('super_admin')) {
                     await handleSuperAdminSetup(firestore);
                 }
                 const docRef = doc(firestore, 'adminusers', adminDocIdFromSession);
@@ -85,7 +81,6 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
                     setLoading(false);
                 });
             } else if (authUser) {
-                // This logic is for Google authenticated users
                 const q = query(collection(firestore, 'adminusers'), where('email', '==', authUser.email));
                 unsubscribe = onSnapshot(q, (querySnapshot) => {
                     if (!querySnapshot.empty) {
@@ -102,7 +97,6 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
                     setLoading(false);
                 });
             } else {
-                // No user logged in
                 setAdminUser(null);
                 setAdminUserDocId(null);
                 setLoading(false);

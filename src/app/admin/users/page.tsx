@@ -45,7 +45,7 @@ type AdminUserFormData = z.infer<typeof adminUserSchema>;
 function AddUserForm({ onFinished }: { onFinished: () => void }) {
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { adminUser, adminUserDocId } = useAdminUser();
+    const { adminUser } = useAdminUser();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const form = useForm<AdminUserFormData>({
@@ -59,7 +59,7 @@ function AddUserForm({ onFinished }: { onFinished: () => void }) {
     });
 
     async function onSubmit(values: AdminUserFormData) {
-        if (!firestore || !adminUserDocId) {
+        if (!firestore || !adminUser) {
             toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not available or you are not authorized.' });
             return;
         }
@@ -67,12 +67,19 @@ function AddUserForm({ onFinished }: { onFinished: () => void }) {
         try {
             // Use staffId for the document ID for new users for consistency
             const userDocRef = doc(firestore, 'adminusers', values.staffId);
-            await setDoc(userDocRef, {
+            
+            const payload: any = {
                 ...values,
-                __admin_id__: adminUserDocId, // Add admin ID for security rule check
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
-            });
+            };
+
+            // Add the creator's ID for the security rule check
+            if (adminUser.role === 'Super Admin') {
+                payload['__admin_id__'] = adminUser.staffId === '23di21' ? 'super_admin_23di21' : adminUser.uid;
+            }
+
+            await setDoc(userDocRef, payload);
 
             toast({ title: 'Success', description: 'New user has been created.' });
             onFinished();

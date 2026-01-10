@@ -2,7 +2,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { collection, query, where, doc, onSnapshot, setDoc, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, onSnapshot, setDoc, getDocs, getDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 
 interface AdminUser {

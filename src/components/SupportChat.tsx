@@ -102,7 +102,11 @@ export function SupportChat() {
                             ? 'bg-primary text-primary-foreground ml-auto' 
                             : 'bg-muted'
                         }`}>
-                            <p className="text-sm">{msg.text}</p>
+                           {msg.sender === 'user' ? (
+                                <p className="text-sm">{msg.text}</p>
+                            ) : (
+                                <div className="text-sm" dangerouslySetInnerHTML={{ __html: msg.text }} />
+                            )}
                         </div>
                          {msg.sender === 'user' && <div className="bg-muted p-2 rounded-full"><User className="h-5 w-5 text-foreground" /></div>}
                     </div>

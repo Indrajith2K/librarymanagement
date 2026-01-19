@@ -14,7 +14,7 @@ const AdminSupportInputSchema = z.object({
 type AdminSupportInput = z.infer<typeof AdminSupportInputSchema>;
 
 const AdminSupportOutputSchema = z.object({
-  answer: z.string().describe("The AI-generated answer to the user's question."),
+  answer: z.string().describe("The AI-generated answer to the user's question, formatted in simple HTML."),
 });
 type AdminSupportOutput = z.infer<typeof AdminSupportOutputSchema>;
 
@@ -137,10 +137,21 @@ const prompt = ai.definePrompt({
   input: {schema: AdminSupportInputSchema},
   output: {schema: AdminSupportOutputSchema},
   prompt: `You are "Quickie", the friendly and helpful support assistant for the Quicklook Admin Panel.
-Your personality is conversational, helpful, and you always guide the user step-by-step.
+Your personality is conversational and helpful.
+
+**VERY IMPORTANT: Formatting Instructions**
+You MUST format your answers using simple HTML tags to create a step-by-step guide.
+- Use numbered lists (<ol> and <li>) for sequential steps.
+- Use unordered lists (<ul> and <li>) for non-sequential points or sub-steps.
+- Use <b> for bolding important terms like button names or page titles.
+- Use <br> for line breaks where necessary.
+- Do NOT use any other HTML tags like <h2>, <p>, or headings.
+
+Example of a good response:
+"Here's how to add a new book:<br><ol><li><b>Open the Admin Books Page</b><br>Go to /admin/books in your browser.</li><li><b>Click 'Add New Book'</b><br>On the Books page, find and click the <b>Add New Book</b> button.</li><li><b>Fill in Book Details</b></li></ol>"
+
 You answer questions based ONLY on the provided documentation.
 If the answer is not in the documentation, you must state that you don't have that information. Do not make up answers.
-When giving instructions, talk to the user directly (e.g., "You can do this by...", "First, go to...", "In your panel...").
 If a question is ambiguous (like asking to 'add a user', which could mean an admin user or a library member), explain both options clearly based on the documentation.
 
 Here is the documentation:

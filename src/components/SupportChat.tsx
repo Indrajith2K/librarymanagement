@@ -7,8 +7,37 @@ import { Input } from '@/components/ui/input';
 import { MessageSquare, X, Send } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
+// Define message structure
+interface Message {
+    text: string;
+    sender: 'user' | 'assistant';
+}
+
 export function SupportChat() {
   const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([
+    { text: "Hello! How can I help you today?", sender: 'assistant' }
+  ]);
+  const [currentMessage, setCurrentMessage] = useState('');
+
+  const handleSendMessage = () => {
+    if (currentMessage.trim() === '') return;
+
+    // Add user message
+    setMessages(prev => [...prev, { text: currentMessage, sender: 'user' }]);
+    setCurrentMessage('');
+
+    // Simulate assistant reply
+    setTimeout(() => {
+        setMessages(prev => [...prev, { text: "Thanks for your message. An agent will be with you shortly.", sender: 'assistant' }]);
+    }, 1000);
+  };
+  
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+        handleSendMessage();
+    }
+  }
 
   return (
     <>
@@ -50,22 +79,28 @@ export function SupportChat() {
                 </Button>
               </CardHeader>
               <CardContent className="flex-1 p-4 overflow-y-auto space-y-4">
-                {/* Chat messages would go here */}
-                <div className="flex">
-                    <div className="bg-muted p-3 rounded-lg max-w-[80%]">
-                        <p className="text-sm">Hello! How can I help you today?</p>
+                {messages.map((msg, index) => (
+                    <div key={index} className={`flex ${msg.sender === 'user' ? 'justify-end' : ''}`}>
+                        <div className={`p-3 rounded-lg max-w-[80%] ${
+                            msg.sender === 'user' 
+                            ? 'bg-primary text-primary-foreground' 
+                            : 'bg-muted'
+                        }`}>
+                            <p className="text-sm">{msg.text}</p>
+                        </div>
                     </div>
-                </div>
-                 <div className="flex justify-end">
-                    <div className="bg-primary text-primary-foreground p-3 rounded-lg max-w-[80%]">
-                        <p className="text-sm">I have a question about a book.</p>
-                    </div>
-                </div>
+                ))}
               </CardContent>
               <div className="p-4 border-t">
                 <div className="relative">
-                  <Input placeholder="Type a message..." className="pr-10" />
-                  <Button size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
+                  <Input 
+                    placeholder="Type a message..." 
+                    className="pr-10"
+                    value={currentMessage}
+                    onChange={(e) => setCurrentMessage(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                  />
+                  <Button size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" onClick={handleSendMessage}>
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>

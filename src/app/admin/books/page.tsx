@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -10,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { BookUp, MoreHorizontal, Search, ScanLine, Trash2, FilePenLine } from 'lucide-react';
 import { AdminUserProvider, useAdminUser } from '@/context/AdminUserContext';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, addDoc, serverTimestamp, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, addDoc, serverTimestamp, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { useForm } from 'react-hook-form';
@@ -249,6 +248,55 @@ function BooksPageContent() {
   }, [firestore]);
 
   const { data: books, loading: booksLoading, error } = useCollection<Book>(booksQuery);
+
+  useEffect(() => {
+    if (!firestore || booksLoading || error || (books && books.length > 0)) {
+        return;
+    }
+
+    const seedDatabase = async () => {
+        const sampleBooks = [
+            { title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', category: 'Classic Fiction', rfidTagId: 'NFC-TG-001', status: 'available', isDeleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+            { title: '1984', author: 'George Orwell', category: 'Dystopian', rfidTagId: 'NFC-1984-002', status: 'issued', isDeleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+            { title: 'To Kill a Mockingbird', author: 'Harper Lee', category: 'Classic Fiction', rfidTagId: 'NFC-TKAM-003', status: 'available', isDeleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+            { title: 'The Lord of the Rings', author: 'J.R.R. Tolkien', category: 'Fantasy', rfidTagId: 'NFC-LOTR-004', status: 'reserved', isDeleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+            { title: 'Pride and Prejudice', author: 'Jane Austen', category: 'Romance', rfidTagId: 'NFC-PAP-005', status: 'available', isDeleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+            { title: 'The Hitchhiker\'s Guide to the Galaxy', author: 'Douglas Adams', category: 'Sci-Fi', rfidTagId: 'NFC-HGTG-006', status: 'damaged', isDeleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+        ];
+        
+        toast({
+            title: "No Books Found",
+            description: "Adding some sample books to get you started.",
+        });
+
+        const batch = writeBatch(firestore);
+        const booksCollection = collection(firestore, 'books');
+        
+        sampleBooks.forEach(book => {
+            const docRef = doc(booksCollection); // Automatically generate a unique ID
+            batch.set(docRef, book);
+        });
+
+        try {
+            await batch.commit();
+            toast({
+                title: "Sample Books Added",
+                description: "Your library collection has been populated with sample data.",
+            });
+        } catch (e) {
+            console.error("Error seeding books:", e);
+            toast({
+                variant: 'destructive',
+                title: "Seeding Failed",
+                description: "Could not add sample books to the database.",
+            });
+        }
+    };
+
+    if (books && books.length === 0) {
+        seedDatabase();
+    }
+  }, [books, booksLoading, firestore, error, toast]);
 
   const handleDeleteBook = async (bookId: string) => {
     if (!firestore) {

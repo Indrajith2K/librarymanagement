@@ -26,6 +26,7 @@ interface Book {
   id: string;
   title: string;
   author: string;
+  category: string;
   rfidTagId: string;
   status: 'available' | 'issued' | 'lost' | 'damaged' | 'reserved';
 }
@@ -33,6 +34,7 @@ interface Book {
 const bookSchema = z.object({
     title: z.string().min(1, "Title is required"),
     author: z.string().min(1, "Author is required"),
+    category: z.string().min(1, "Genre is required"),
     rfidTagId: z.string().min(1, "RFID Tag ID is required"),
     status: z.enum(['available', 'issued', 'lost', 'damaged', 'reserved']).default('available'),
 });
@@ -51,6 +53,7 @@ function AddBookForm({ onFinished }: { onFinished: () => void }) {
         defaultValues: {
             title: '',
             author: '',
+            category: '',
             rfidTagId: '',
             status: 'available',
         },
@@ -123,6 +126,19 @@ function AddBookForm({ onFinished }: { onFinished: () => void }) {
                             <FormLabel>Author</FormLabel>
                             <FormControl>
                                 <Input placeholder="e.g. F. Scott Fitzgerald" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Genre</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g. Fiction" {...field} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -273,6 +289,7 @@ function BooksPageContent() {
                   <TableHead>RFID Tag ID</TableHead>
                   <TableHead>Title</TableHead>
                   <TableHead>Author</TableHead>
+                  <TableHead>Genre</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
@@ -283,6 +300,7 @@ function BooksPageContent() {
                     <TableCell><Skeleton className="h-8 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-8 w-48" /></TableCell>
                     <TableCell><Skeleton className="h-8 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-8 w-20" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                   </TableRow>
@@ -292,6 +310,7 @@ function BooksPageContent() {
                     <TableCell>{book.rfidTagId}</TableCell>
                     <TableCell className="font-medium">{book.title}</TableCell>
                     <TableCell>{book.author}</TableCell>
+                    <TableCell>{book.category}</TableCell>
                     <TableCell>
                         <span className={`px-2 py-1 text-xs rounded-full capitalize ${
                             book.status === 'available' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' 

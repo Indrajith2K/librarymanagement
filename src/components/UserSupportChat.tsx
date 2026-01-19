@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { MessageSquare, X, Send, Bot, User } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
-import { answerAdminQuestion } from '@/ai/flows/admin-support-flow';
+import { answerUserQuestion } from '@/ai/flows/user-support-flow';
 
 // Define message structure
 interface Message {
@@ -15,10 +15,10 @@ interface Message {
     sender: 'user' | 'assistant';
 }
 
-export function SupportChat() {
+export function UserSupportChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { text: "Hello! How can I help you with the admin panel today?", sender: 'assistant' }
+    { text: "Hello! How can I help you with issuing or returning books today?", sender: 'assistant' }
   ]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [isThinking, setIsThinking] = useState(false);
@@ -41,7 +41,7 @@ export function SupportChat() {
     setIsThinking(true);
 
     try {
-        const response = await answerAdminQuestion({ question: currentMessage });
+        const response = await answerUserQuestion({ question: currentMessage });
         const assistantMessage: Message = { text: response.answer, sender: 'assistant' };
         setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
@@ -96,7 +96,7 @@ export function SupportChat() {
           >
             <Card className="w-96 h-[32rem] shadow-2xl flex flex-col">
               <CardHeader className="flex flex-row items-center justify-between p-4 border-b">
-                <CardTitle className="text-lg">Admin Support</CardTitle>
+                <CardTitle className="text-lg">Library Help</CardTitle>
                 <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
                   <X className="h-4 w-4" />
                 </Button>
@@ -133,7 +133,7 @@ export function SupportChat() {
               <div className="p-4 border-t">
                 <div className="relative">
                   <Input 
-                    placeholder="Ask about the admin panel..." 
+                    placeholder="Ask about issuing books..." 
                     className="pr-10"
                     value={currentMessage}
                     onChange={(e) => setCurrentMessage(e.target.value)}

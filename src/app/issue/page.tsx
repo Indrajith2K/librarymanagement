@@ -11,7 +11,7 @@ import { collection, query, where, writeBatch, doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
-import { SupportChat } from '@/components/SupportChat';
+import { UserSupportChat } from '@/components/UserSupportChat';
 
 interface Book {
   id: string;
@@ -232,7 +232,7 @@ export default function IssuePage() {
             </Card>
         </div>
       </main>
-      <SupportChat />
+      <UserSupportChat />
     </div>
   );
 }

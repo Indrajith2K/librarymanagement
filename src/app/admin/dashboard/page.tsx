@@ -282,7 +282,7 @@ function AdminDashboardContent() {
             
             <div>
                 <h2 className="text-2xl font-bold mb-4">Top Choices</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
                     {topChoices.map((book) => (
                         <div key={book.title} className="space-y-2">
                             <Image src={book.imageUrl} alt={book.title} width={200} height={300} className="rounded-md w-full object-cover aspect-[2/3] shadow-lg" data-ai-hint={book.imageHint}/>
@@ -301,11 +301,11 @@ function AdminDashboardContent() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>User ID</TableHead>
+                                <TableHead className="hidden sm:table-cell">User ID</TableHead>
                                 <TableHead>User Name</TableHead>
-                                <TableHead>Book ID</TableHead>
+                                <TableHead className="hidden lg:table-cell">Book ID</TableHead>
                                 <TableHead>Title</TableHead>
-                                <TableHead>Author</TableHead>
+                                <TableHead className="hidden lg:table-cell">Author</TableHead>
                                 <TableHead>Overdue</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Fine</TableHead>
@@ -314,7 +314,7 @@ function AdminDashboardContent() {
                         <TableBody>
                             {overdueBooks.map((book) => (
                                 <TableRow key={book.bookId}>
-                                    <TableCell>{book.userId}</TableCell>
+                                    <TableCell className="hidden sm:table-cell">{book.userId}</TableCell>
                                     <TableCell className="flex items-center gap-2">
                                         <Avatar className="h-6 w-6">
                                             <AvatarImage src={`https://i.pravatar.cc/40?u=${book.userId}`} />
@@ -322,9 +322,9 @@ function AdminDashboardContent() {
                                         </Avatar>
                                         {book.userName}
                                     </TableCell>
-                                    <TableCell>{book.bookId}</TableCell>
+                                    <TableCell className="hidden lg:table-cell">{book.bookId}</TableCell>
                                     <TableCell>{book.title}</TableCell>
-                                    <TableCell>{book.author}</TableCell>
+                                    <TableCell className="hidden lg:table-cell">{book.author}</TableCell>
                                     <TableCell>{book.overdue}</TableCell>
                                     <TableCell>
                                       <span className={book.status === 'Delay' ? 'text-red-500' : book.status === 'Returned' ? 'text-green-500' : ''}>
@@ -358,7 +358,7 @@ function AdminDashboardContent() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>User ID</TableHead>
+                                    <TableHead className="hidden sm:table-cell">User ID</TableHead>
                                     <TableHead>Book</TableHead>
                                     <TableHead>Issue Date</TableHead>
                                     <TableHead>Return Date</TableHead>
@@ -368,7 +368,7 @@ function AdminDashboardContent() {
                             <TableBody>
                                 {issuedBooks.map((book) => (
                                     <TableRow key={book.userId}>
-                                        <TableCell>{book.userId}</TableCell>
+                                        <TableCell className="hidden sm:table-cell">{book.userId}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-3">
                                                 <Image src={book.image} alt={book.bookTitle} width={40} height={60} className="rounded" />

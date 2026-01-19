@@ -239,8 +239,8 @@ function UsersPageContent() {
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead>Staff ID</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead className="hidden md:table-cell">Staff ID</TableHead>
+                  <TableHead className="hidden lg:table-cell">Email</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -249,8 +249,8 @@ function UsersPageContent() {
                   <TableRow key={i}>
                     <TableCell><div className="flex items-center gap-3"><Skeleton className="h-10 w-10 rounded-full" /><Skeleton className="h-6 w-32" /></div></TableCell>
                     <TableCell><Skeleton className="h-6 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-40" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-6 w-20" /></TableCell>
+                    <TableCell className="hidden lg:table-cell"><Skeleton className="h-6 w-40" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                   </TableRow>
                 ))}
@@ -275,8 +275,8 @@ function UsersPageContent() {
                             {user.role}
                         </span>
                     </TableCell>
-                    <TableCell>{user.staffId || 'N/A'}</TableCell>
-                    <TableCell>{user.email || 'N/A'}</TableCell>
+                    <TableCell className="hidden md:table-cell">{user.staffId || 'N/A'}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{user.email || 'N/A'}</TableCell>
                     <TableCell className="text-right">
                       {adminUser?.staffId !== user.staffId && (
                        <AlertDialog>

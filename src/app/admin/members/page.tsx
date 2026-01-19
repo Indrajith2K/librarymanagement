@@ -289,9 +289,9 @@ function MembersPageContent() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead className="hidden lg:table-cell">Email</TableHead>
                   <TableHead>Member Type</TableHead>
-                  <TableHead>RFID Card ID</TableHead>
+                  <TableHead className="hidden md:table-cell">RFID Card ID</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
@@ -300,9 +300,9 @@ function MembersPageContent() {
                 {loading && Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-6 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-40" /></TableCell>
+                    <TableCell className="hidden lg:table-cell"><Skeleton className="h-6 w-40" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-6 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-16" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                   </TableRow>
@@ -312,9 +312,9 @@ function MembersPageContent() {
                     <TableCell className="font-medium">
                         {member.name}
                     </TableCell>
-                    <TableCell>{member.email}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{member.email}</TableCell>
                     <TableCell className="capitalize">{member.memberType}</TableCell>
-                    <TableCell>{member.rfidCardId || 'N/A'}</TableCell>
+                    <TableCell className="hidden md:table-cell">{member.rfidCardId || 'N/A'}</TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 text-xs rounded-full ${member.isActive ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'}`}>
                         {member.isActive ? 'Active' : 'Inactive'}

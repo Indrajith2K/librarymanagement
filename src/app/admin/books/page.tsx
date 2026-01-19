@@ -330,9 +330,9 @@ function BooksPageContent() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>RFID Tag ID</TableHead>
+                  <TableHead className="hidden md:table-cell">RFID Tag ID</TableHead>
                   <TableHead>Title</TableHead>
-                  <TableHead>Author</TableHead>
+                  <TableHead className="hidden sm:table-cell">Author</TableHead>
                   <TableHead>Genre</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Action</TableHead>
@@ -341,9 +341,9 @@ function BooksPageContent() {
               <TableBody>
                 {loading && Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell><Skeleton className="h-8 w-24" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-8 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-8 w-48" /></TableCell>
-                    <TableCell><Skeleton className="h-8 w-32" /></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-8 w-32" /></TableCell>
                     <TableCell><Skeleton className="h-8 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-8 w-20" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
@@ -351,9 +351,9 @@ function BooksPageContent() {
                 ))}
                 {!loading && filteredBooks.map((book) => (
                   <TableRow key={book.id}>
-                    <TableCell>{book.rfidTagId}</TableCell>
+                    <TableCell className="hidden md:table-cell">{book.rfidTagId}</TableCell>
                     <TableCell className="font-medium">{book.title}</TableCell>
-                    <TableCell>{book.author}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{book.author}</TableCell>
                     <TableCell>{book.category}</TableCell>
                     <TableCell>
                         <span className={`px-2 py-1 text-xs rounded-full capitalize ${

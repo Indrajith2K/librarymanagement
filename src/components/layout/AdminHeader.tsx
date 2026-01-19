@@ -57,7 +57,7 @@ export function AdminHeader() {
             <AvatarImage src={adminUser?.photoURL || `https://i.pravatar.cc/150?u=${adminUser?.staffId || adminUser?.email}`} />
             <AvatarFallback>{getInitials(adminUser?.displayName)}</AvatarFallback>
         </Avatar>
-        <div>
+        <div className="hidden lg:block">
             <p className="text-sm font-semibold">{adminUser?.displayName || 'Admin User'}</p>
             <p className="text-xs text-muted-foreground">{adminUser?.role || 'Admin Role'}</p>
         </div>

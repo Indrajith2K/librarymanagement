@@ -241,6 +241,7 @@ function BooksPageContent() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const { loading: adminLoading } = useAdminUser();
+  const [searchTerm, setSearchTerm] = useState('');
 
   const booksQuery = useMemo(() => {
     if (!firestore) return null;
@@ -248,6 +249,18 @@ function BooksPageContent() {
   }, [firestore]);
 
   const { data: books, loading: booksLoading, error } = useCollection<Book>(booksQuery);
+
+  const filteredBooks = useMemo(() => {
+    if (!books) {
+      return [];
+    }
+    return books.filter(book =>
+      (book.title?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (book.author?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (book.category?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (book.rfidTagId?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+    );
+  }, [books, searchTerm]);
 
   const handleDeleteBook = async (bookId: string) => {
     if (!firestore) {
@@ -280,7 +293,12 @@ function BooksPageContent() {
                 <div className="flex items-center gap-2">
                     <div className="relative">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Search books..." className="pl-8" />
+                        <Input 
+                            placeholder="Search books..." 
+                            className="pl-8" 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
                     <Button disabled={loading} onClick={() => { setEditingBook(null); setIsFormOpen(true); }}>
                         <BookUp className="mr-2 h-4 w-4" /> Add New Book
@@ -331,7 +349,7 @@ function BooksPageContent() {
                     <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                   </TableRow>
                 ))}
-                {!loading && books?.map((book) => (
+                {!loading && filteredBooks.map((book) => (
                   <TableRow key={book.id}>
                     <TableCell>{book.rfidTagId}</TableCell>
                     <TableCell className="font-medium">{book.title}</TableCell>
@@ -386,12 +404,16 @@ function BooksPageContent() {
                 ))}
               </TableBody>
             </Table>
-             {error && <p className="text-red-500 text-center p-4">Error loading books: {error.message}</p>}
-            {!loading && books?.length === 0 && (
-              <div className="text-center p-8 border-t">
-                 <p className="text-muted-foreground">No books found in your library.</p>
-                 <p className="text-sm text-muted-foreground mt-2">Click "Add New Book" to start building your collection.</p>
-              </div>
+            {error && <p className="text-red-500 text-center p-4">Error loading books: {error.message}</p>}
+            {!loading && filteredBooks.length === 0 && (
+                <div className="text-center p-8 border-t">
+                    <p className="text-muted-foreground">
+                        {books && books.length > 0 ? 'No books match your search.' : 'No books found in your library.'}
+                    </p>
+                    {books?.length === 0 && (
+                        <p className="text-sm text-muted-foreground mt-2">Click "Add New Book" to start building your collection.</p>
+                    )}
+                </div>
             )}
           </CardContent>
         </Card>

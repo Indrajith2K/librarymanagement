@@ -4,6 +4,7 @@ import { SidebarProvider } from '@/hooks/use-sidebar';
 import { AdminSidebar } from './AdminSidebar';
 import { AdminHeader } from './AdminHeader';
 import { AdminUserProvider } from '@/context/AdminUserContext';
+import { SupportChat } from '@/components/SupportChat';
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   return (
@@ -18,6 +19,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               {children}
             </main>
           </div>
+          <SupportChat />
         </div>
     </SidebarProvider>
   );

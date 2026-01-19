@@ -11,6 +11,7 @@ import { collection, query, where, writeBatch, doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
+import { SupportChat } from '@/components/SupportChat';
 
 interface Book {
   id: string;
@@ -62,10 +63,10 @@ export default function ReturnPage() {
             const foundBook = allBooks?.find(b => b.rfidTagId === scannedIdInput);
             if (foundBook) {
                 if (scannedBooks.some(b => b.id === foundBook.id)) {
-                    toast({ variant: 'destructive', title: 'Duplicate Book', description: `${foundBook.title} is already in the list.` });
+                    toast({ variant: 'destructive', title: 'Duplicate Book', description: `\'\'\'${foundBook.title}\'\'\' is already in the list.` });
                 } else {
                     setScannedBooks(prev => [...prev, foundBook]);
-                    toast({ title: 'Book Added', description: `${foundBook.title} has been added to the return list.` });
+                    toast({ title: 'Book Added', description: `\'\'\'${foundBook.title}\'\'\' has been added to the return list.` });
                 }
             } else {
                 toast({ variant: 'destructive', title: 'Book Not Found', description: `No issued book with RFID ${scannedIdInput} found.` });
@@ -232,6 +233,7 @@ export default function ReturnPage() {
             </Card>
         </div>
       </main>
+      <SupportChat />
     </div>
   );
 }

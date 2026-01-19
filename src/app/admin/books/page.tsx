@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BookUp, MoreHorizontal, Search, ScanLine, Trash2, FilePenLine } from 'lucide-react';
-import { AdminUserProvider } from '@/context/AdminUserContext';
+import { AdminUserProvider, useAdminUser } from '@/context/AdminUserContext';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, addDoc, serverTimestamp, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -502,3 +502,5 @@ export default function BooksPage() {
         </AdminUserProvider>
     )
 }
+
+    

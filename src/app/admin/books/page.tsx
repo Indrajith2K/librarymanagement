@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BookUp, MoreHorizontal, Search, ScanLine, Trash2, FilePenLine } from 'lucide-react';
-import { AdminUserProvider, useAdminUser } from '@/context/AdminUserContext';
+import { BookUp, MoreHorizontal, Search, ScanLine, Trash2, FilePenLine, DatabaseZap } from 'lucide-react';
+import { AdminUserProvider } from '@/context/AdminUserContext';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, addDoc, serverTimestamp, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -312,28 +312,27 @@ function BooksPageContent() {
 
     toast({
         title: "Populating Library",
-        description: "Adding 50 sample books to get you started.",
+        description: "Updating the database with 50 sample books.",
     });
 
     const batch = writeBatch(firestore);
-    const booksCollection = collection(firestore, 'books');
     
     sampleBooks.forEach(book => {
-        const docRef = doc(booksCollection); // Automatically generate a unique ID
+        const docRef = doc(firestore, 'books', book.rfidTagId);
         batch.set(docRef, book);
     });
 
     try {
         await batch.commit();
         toast({
-            title: "Sample Books Added",
-            description: "Your library collection has been populated with sample data.",
+            title: "Database Updated",
+            description: "The book collection has been updated with sample data.",
         });
     } catch (e: any) {
         console.error("Error seeding books:", e);
         toast({
             variant: 'destructive',
-            title: "Seeding Failed",
+            title: "Update Failed",
             description: `Could not add sample books to the database: ${e.message}`,
         });
     } finally {
@@ -370,11 +369,15 @@ function BooksPageContent() {
           <CardHeader>
             <div className="flex items-center justify-between">
                 <CardTitle>Book List</CardTitle>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
                     <div className="relative">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input placeholder="Search books..." className="pl-8" />
                     </div>
+                     <Button variant="outline" onClick={handleSeedDatabase} disabled={isSeeding || loading}>
+                        <DatabaseZap className="mr-2 h-4 w-4" />
+                        {isSeeding ? 'Seeding...' : 'Seed 50 Books'}
+                    </Button>
                     <Button disabled={loading} onClick={() => { setEditingBook(null); setIsFormOpen(true); }}>
                         <BookUp className="mr-2 h-4 w-4" /> Add New Book
                     </Button>
@@ -482,10 +485,8 @@ function BooksPageContent() {
              {error && <p className="text-red-500 text-center p-4">Error loading books: {error.message}</p>}
             {!loading && books?.length === 0 && (
               <div className="text-center p-8 border-t">
-                <p className="text-muted-foreground mb-4">No books found in your library.</p>
-                <Button onClick={handleSeedDatabase} disabled={isSeeding}>
-                  {isSeeding ? 'Seeding...' : 'Seed Sample Books'}
-                </Button>
+                 <p className="text-muted-foreground">No books found in your library.</p>
+                 <p className="text-sm text-muted-foreground mt-2">Click "Seed 50 Books" above to add sample data.</p>
               </div>
             )}
           </CardContent>
@@ -502,5 +503,3 @@ export default function BooksPage() {
         </AdminUserProvider>
     )
 }
-
-    

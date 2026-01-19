@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BookUp, MoreHorizontal, Search, ScanLine, Trash2, FilePenLine } from 'lucide-react';
-import { AdminUserProvider, useAdminUser } from '@/context/AdminUserContext';
+import { AdminUserProvider } from '@/context/AdminUserContext';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, addDoc, serverTimestamp, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -241,6 +241,7 @@ function BooksPageContent() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const { loading: adminLoading } = useAdminUser();
+  const [isSeeding, setIsSeeding] = useState(false);
 
   const booksQuery = useMemo(() => {
     if (!firestore) return null;
@@ -249,99 +250,97 @@ function BooksPageContent() {
 
   const { data: books, loading: booksLoading, error } = useCollection<Book>(booksQuery);
 
-  useEffect(() => {
-    if (!firestore || booksLoading || error || (books && books.length > 0)) {
-        return;
+  async function handleSeedDatabase() {
+    if (!firestore) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not available.' });
+      return;
     }
+    setIsSeeding(true);
 
-    const seedDatabase = async () => {
-        const sampleBooks = [
-            { title: 'Atomic Habits', author: 'James Clear', category: 'Self-Help', rfidTagId: '200000001', status: 'available' },
-            { title: 'Deep Work', author: 'Cal Newport', category: 'Productivity', rfidTagId: '200000002', status: 'available' },
-            { title: 'The Alchemist', author: 'Paulo Coelho', category: 'Fiction', rfidTagId: '200000003', status: 'available' },
-            { title: 'Rich Dad Poor Dad', author: 'Robert Kiyosaki', category: 'Finance', rfidTagId: '200000004', status: 'available' },
-            { title: 'Harry Potter and the Sorcerer\'s Stone', author: 'J.K. Rowling', category: 'Fantasy', rfidTagId: '200000005', status: 'available' },
-            { title: 'The Hobbit', author: 'J.R.R. Tolkien', category: 'Fantasy', rfidTagId: '200000006', status: 'available' },
-            { title: 'Think Like a Monk', author: 'Jay Shetty', category: 'Motivation', rfidTagId: '200000007', status: 'available' },
-            { title: 'The Silent Patient', author: 'Alex Michaelides', category: 'Thriller', rfidTagId: '200000008', status: 'available' },
-            { title: 'Wings of Fire', author: 'A.P.J. Abdul Kalam', category: 'Biography', rfidTagId: '200000009', status: 'available' },
-            { title: 'Ikigai', author: 'Hector Garcia', category: 'Philosophy', rfidTagId: '200000010', status: 'available' },
-            { title: 'Sherlock Holmes', author: 'Arthur Conan Doyle', category: 'Mystery', rfidTagId: '200000011', status: 'available' },
-            { title: 'The Psychology of Money', author: 'Morgan Housel', category: 'Finance', rfidTagId: '200000012', status: 'available' },
-            { title: '1984', author: 'George Orwell', category: 'Dystopian', rfidTagId: '200000013', status: 'available' },
-            { title: 'The Power of Habit', author: 'Charles Duhigg', category: 'Self-Help', rfidTagId: '200000014', status: 'available' },
-            { title: 'The Monk Who Sold His Ferrari', author: 'Robin Sharma', category: 'Motivation', rfidTagId: '200000015', status: 'available' },
-            { title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', category: 'Classic', rfidTagId: '200000016', status: 'available' },
-            { title: 'To Kill a Mockingbird', author: 'Harper Lee', category: 'Classic', rfidTagId: '200000017', status: 'available' },
-            { title: 'Sapiens', author: 'Yuval Noah Harari', category: 'History', rfidTagId: '200000018', status: 'available' },
-            { title: 'The Subtle Art of Not Giving a F*ck', author: 'Mark Manson', category: 'Self-Help', rfidTagId: '200000019', status: 'available' },
-            { title: 'The Fault in Our Stars', author: 'John Green', category: 'Romance', rfidTagId: '200000020', status: 'available' },
-            { title: 'The Da Vinci Code', author: 'Dan Brown', category: 'Suspense', rfidTagId: '200000021', status: 'available' },
-            { title: 'Zero to One', author: 'Peter Thiel', category: 'Startup', rfidTagId: '200000022', status: 'available' },
-            { title: 'Start With Why', author: 'Simon Sinek', category: 'Leadership', rfidTagId: '200000023', status: 'available' },
-            { title: 'The 5 AM Club', author: 'Robin Sharma', category: 'Productivity', rfidTagId: '200000024', status: 'available' },
-            { title: 'Think and Grow Rich', author: 'Napoleon Hill', category: 'Success', rfidTagId: '200000025', status: 'available' },
-            { title: 'The Lean Startup', author: 'Eric Ries', category: 'Business', rfidTagId: '200000026', status: 'available' },
-            { title: 'Man\'s Search for Meaning', author: 'Viktor Frankl', category: 'Psychology', rfidTagId: '200000027', status: 'available' },
-            { title: 'The Kite Runner', author: 'Khaled Hosseini', category: 'Drama', rfidTagId: '200000028', status: 'available' },
-            { title: 'Life of Pi', author: 'Yann Martel', category: 'Adventure', rfidTagId: '200000029', status: 'available' },
-            { title: 'The Book Thief', author: 'Markus Zusak', category: 'Historical Fiction', rfidTagId: '200000030', status: 'available' },
-            { title: 'The Girl on the Train', author: 'Paula Hawkins', category: 'Crime', rfidTagId: '200000031', status: 'available' },
-            { title: 'The Martian', author: 'Andy Weir', category: 'Science Fiction', rfidTagId: '200000032', status: 'available' },
-            { title: 'Dune', author: 'Frank Herbert', category: 'Sci-Fi', rfidTagId: '200000033', status: 'available' },
-            { title: 'The Catcher in the Rye', author: 'J.D. Salinger', category: 'Classic', rfidTagId: '200000034', status: 'available' },
-            { title: 'The Road', author: 'Cormac McCarthy', category: 'Post-Apocalyptic', rfidTagId: '200000035', status: 'available' },
-            { title: 'The Art of War', author: 'Sun Tzu', category: 'Strategy', rfidTagId: '200000036', status: 'available' },
-            { title: 'Can\'t Hurt Me', author: 'David Goggins', category: 'Motivation', rfidTagId: '200000037', status: 'available' },
-            { title: 'Educated', author: 'Tara Westover', category: 'Memoir', rfidTagId: '200000038', status: 'available' },
-            { title: 'The Hunger Games', author: 'Suzanne Collins', category: 'Young Adult', rfidTagId: '200000039', status: 'available' },
-            { title: 'Divergent', author: 'Veronica Roth', category: 'Young Adult', rfidTagId: '200000040', status: 'available' },
-            { title: 'The Shining', author: 'Stephen King', category: 'Horror', rfidTagId: '200000041', status: 'available' },
-            { title: 'Dracula', author: 'Bram Stoker', category: 'Horror', rfidTagId: '200000042', status: 'available' },
-            { title: 'The Odyssey', author: 'Homer', category: 'Epic', rfidTagId: '200000043', status: 'available' },
-            { title: 'The Iliad', author: 'Homer', category: 'Epic', rfidTagId: '200000044', status: 'available' },
-            { title: 'The Notebook', author: 'Nicholas Sparks', category: 'Romance', rfidTagId: '200000045', status: 'available' },
-            { title: 'Good to Great', author: 'Jim Collins', category: 'Management', rfidTagId: '200000046', status: 'available' },
-            { title: 'Digital Minimalism', author: 'Cal Newport', category: 'Technology', rfidTagId: '200000047', status: 'available' },
-            { title: 'The Code Book', author: 'Simon Singh', category: 'Cryptography', rfidTagId: '200000048', status: 'available' },
-            { title: 'Clean Code', author: 'Robert C. Martin', category: 'Programming', rfidTagId: '200000049', status: 'available' },
-            { title: 'Introduction to Algorithms', author: 'Thomas H. Cormen', category: 'Computer Science', rfidTagId: '200000050', status: 'available' },
-        ].map(book => ({...book, isDeleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+    const sampleBooks = [
+        { title: 'Atomic Habits', author: 'James Clear', category: 'Self-Help', rfidTagId: '200000001', status: 'available' },
+        { title: 'Deep Work', author: 'Cal Newport', category: 'Productivity', rfidTagId: '200000002', status: 'available' },
+        { title: 'The Alchemist', author: 'Paulo Coelho', category: 'Fiction', rfidTagId: '200000003', status: 'available' },
+        { title: 'Rich Dad Poor Dad', author: 'Robert Kiyosaki', category: 'Finance', rfidTagId: '200000004', status: 'available' },
+        { title: 'Harry Potter and the Sorcerer\'s Stone', author: 'J.K. Rowling', category: 'Fantasy', rfidTagId: '200000005', status: 'available' },
+        { title: 'The Hobbit', author: 'J.R.R. Tolkien', category: 'Fantasy', rfidTagId: '200000006', status: 'available' },
+        { title: 'Think Like a Monk', author: 'Jay Shetty', category: 'Motivation', rfidTagId: '200000007', status: 'available' },
+        { title: 'The Silent Patient', author: 'Alex Michaelides', category: 'Thriller', rfidTagId: '200000008', status: 'available' },
+        { title: 'Wings of Fire', author: 'A.P.J. Abdul Kalam', category: 'Biography', rfidTagId: '200000009', status: 'available' },
+        { title: 'Ikigai', author: 'Hector Garcia', category: 'Philosophy', rfidTagId: '200000010', status: 'available' },
+        { title: 'Sherlock Holmes', author: 'Arthur Conan Doyle', category: 'Mystery', rfidTagId: '200000011', status: 'available' },
+        { title: 'The Psychology of Money', author: 'Morgan Housel', category: 'Finance', rfidTagId: '200000012', status: 'available' },
+        { title: '1984', author: 'George Orwell', category: 'Dystopian', rfidTagId: '200000013', status: 'available' },
+        { title: 'The Power of Habit', author: 'Charles Duhigg', category: 'Self-Help', rfidTagId: '200000014', status: 'available' },
+        { title: 'The Monk Who Sold His Ferrari', author: 'Robin Sharma', category: 'Motivation', rfidTagId: '200000015', status: 'available' },
+        { title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', category: 'Classic', rfidTagId: '200000016', status: 'available' },
+        { title: 'To Kill a Mockingbird', author: 'Harper Lee', category: 'Classic', rfidTagId: '200000017', status: 'available' },
+        { title: 'Sapiens', author: 'Yuval Noah Harari', category: 'History', rfidTagId: '200000018', status: 'available' },
+        { title: 'The Subtle Art of Not Giving a F*ck', author: 'Mark Manson', category: 'Self-Help', rfidTagId: '200000019', status: 'available' },
+        { title: 'The Fault in Our Stars', author: 'John Green', category: 'Romance', rfidTagId: '200000020', status: 'available' },
+        { title: 'The Da Vinci Code', author: 'Dan Brown', category: 'Suspense', rfidTagId: '200000021', status: 'available' },
+        { title: 'Zero to One', author: 'Peter Thiel', category: 'Startup', rfidTagId: '200000022', status: 'available' },
+        { title: 'Start With Why', author: 'Simon Sinek', category: 'Leadership', rfidTagId: '200000023', status: 'available' },
+        { title: 'The 5 AM Club', author: 'Robin Sharma', category: 'Productivity', rfidTagId: '200000024', status: 'available' },
+        { title: 'Think and Grow Rich', author: 'Napoleon Hill', category: 'Success', rfidTagId: '200000025', status: 'available' },
+        { title: 'The Lean Startup', author: 'Eric Ries', category: 'Business', rfidTagId: '200000026', status: 'available' },
+        { title: 'Man\'s Search for Meaning', author: 'Viktor Frankl', category: 'Psychology', rfidTagId: '200000027', status: 'available' },
+        { title: 'The Kite Runner', author: 'Khaled Hosseini', category: 'Drama', rfidTagId: '200000028', status: 'available' },
+        { title: 'Life of Pi', author: 'Yann Martel', category: 'Adventure', rfidTagId: '200000029', status: 'available' },
+        { title: 'The Book Thief', author: 'Markus Zusak', category: 'Historical Fiction', rfidTagId: '200000030', status: 'available' },
+        { title: 'The Girl on the Train', author: 'Paula Hawkins', category: 'Crime', rfidTagId: '200000031', status: 'available' },
+        { title: 'The Martian', author: 'Andy Weir', category: 'Science Fiction', rfidTagId: '200000032', status: 'available' },
+        { title: 'Dune', author: 'Frank Herbert', category: 'Sci-Fi', rfidTagId: '200000033', status: 'available' },
+        { title: 'The Catcher in the Rye', author: 'J.D. Salinger', category: 'Classic', rfidTagId: '200000034', status: 'available' },
+        { title: 'The Road', author: 'Cormac McCarthy', category: 'Post-Apocalyptic', rfidTagId: '200000035', status: 'available' },
+        { title: 'The Art of War', author: 'Sun Tzu', category: 'Strategy', rfidTagId: '200000036', status: 'available' },
+        { title: 'Can\'t Hurt Me', author: 'David Goggins', category: 'Motivation', rfidTagId: '200000037', status: 'available' },
+        { title: 'Educated', author: 'Tara Westover', category: 'Memoir', rfidTagId: '200000038', status: 'available' },
+        { title: 'The Hunger Games', author: 'Suzanne Collins', category: 'Young Adult', rfidTagId: '200000039', status: 'available' },
+        { title: 'Divergent', author: 'Veronica Roth', category: 'Young Adult', rfidTagId: '200000040', status: 'available' },
+        { title: 'The Shining', author: 'Stephen King', category: 'Horror', rfidTagId: '200000041', status: 'available' },
+        { title: 'Dracula', author: 'Bram Stoker', category: 'Horror', rfidTagId: '200000042', status: 'available' },
+        { title: 'The Odyssey', author: 'Homer', category: 'Epic', rfidTagId: '200000043', status: 'available' },
+        { title: 'The Iliad', author: 'Homer', category: 'Epic', rfidTagId: '200000044', status: 'available' },
+        { title: 'The Notebook', author: 'Nicholas Sparks', category: 'Romance', rfidTagId: '200000045', status: 'available' },
+        { title: 'Good to Great', author: 'Jim Collins', category: 'Management', rfidTagId: '200000046', status: 'available' },
+        { title: 'Digital Minimalism', author: 'Cal Newport', category: 'Technology', rfidTagId: '200000047', status: 'available' },
+        { title: 'The Code Book', author: 'Simon Singh', category: 'Cryptography', rfidTagId: '200000048', status: 'available' },
+        { title: 'Clean Code', author: 'Robert C. Martin', category: 'Programming', rfidTagId: '200000049', status: 'available' },
+        { title: 'Introduction to Algorithms', author: 'Thomas H. Cormen', category: 'Computer Science', rfidTagId: '200000050', status: 'available' },
+    ].map(book => ({...book, isDeleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
 
-        
+    toast({
+        title: "Populating Library",
+        description: "Adding 50 sample books to get you started.",
+    });
+
+    const batch = writeBatch(firestore);
+    const booksCollection = collection(firestore, 'books');
+    
+    sampleBooks.forEach(book => {
+        const docRef = doc(booksCollection); // Automatically generate a unique ID
+        batch.set(docRef, book);
+    });
+
+    try {
+        await batch.commit();
         toast({
-            title: "No Books Found",
-            description: "Adding some sample books to get you started.",
+            title: "Sample Books Added",
+            description: "Your library collection has been populated with sample data.",
         });
-
-        const batch = writeBatch(firestore);
-        const booksCollection = collection(firestore, 'books');
-        
-        sampleBooks.forEach(book => {
-            const docRef = doc(booksCollection); // Automatically generate a unique ID
-            batch.set(docRef, book);
+    } catch (e: any) {
+        console.error("Error seeding books:", e);
+        toast({
+            variant: 'destructive',
+            title: "Seeding Failed",
+            description: `Could not add sample books to the database: ${e.message}`,
         });
-
-        try {
-            await batch.commit();
-            toast({
-                title: "Sample Books Added",
-                description: "Your library collection has been populated with sample data.",
-            });
-        } catch (e) {
-            console.error("Error seeding books:", e);
-            toast({
-                variant: 'destructive',
-                title: "Seeding Failed",
-                description: "Could not add sample books to the database.",
-            });
-        }
-    };
-
-    if (books && books.length === 0) {
-        seedDatabase();
+    } finally {
+        setIsSeeding(false);
     }
-  }, [books, booksLoading, firestore, error, toast]);
+  }
+
 
   const handleDeleteBook = async (bookId: string) => {
     if (!firestore) {
@@ -481,7 +480,14 @@ function BooksPageContent() {
               </TableBody>
             </Table>
              {error && <p className="text-red-500 text-center p-4">Error loading books: {error.message}</p>}
-            {!loading && books?.length === 0 && <p className="text-muted-foreground text-center p-4">No books found. Click "Add New Book" to get started.</p>}
+            {!loading && books?.length === 0 && (
+              <div className="text-center p-8 border-t">
+                <p className="text-muted-foreground mb-4">No books found in your library.</p>
+                <Button onClick={handleSeedDatabase} disabled={isSeeding}>
+                  {isSeeding ? 'Seeding...' : 'Seed Sample Books'}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

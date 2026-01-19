@@ -1,3 +1,25 @@
+'use server';
+/**
+ * @fileOverview An AI support agent for the Quicklook Admin Panel.
+ *
+ * - answerAdminQuestion - A function that answers questions about the admin panel.
+ */
+
+import {ai} from '@/ai/genkit';
+import {z} from 'genkit';
+
+const AdminSupportInputSchema = z.object({
+  question: z.string().describe("The user's question about the admin panel."),
+});
+type AdminSupportInput = z.infer<typeof AdminSupportInputSchema>;
+
+const AdminSupportOutputSchema = z.object({
+  answer: z.string().describe("The AI-generated answer to the user's question."),
+});
+type AdminSupportOutput = z.infer<typeof AdminSupportOutputSchema>;
+
+// Hardcoded documentation content
+const adminDocumentation = `
 # Quicklook Admin Panel Documentation
 
 ## 1. Overview
@@ -8,16 +30,15 @@ The Quicklook Admin Panel is a comprehensive and secure dashboard for library st
 
 ## 2. Access & Authentication
 
-### 2.1. Login (`/admin/login`)
+### 2.1. Login (\`/admin/login\`)
 
 The gateway to the admin panel.
 
-*   **How to Access**: Navigate directly to `/admin/login` or click the "Admin Login" button on the main user homepage.
-*   **Authentication Methods**:
-    
+*   **How to Access**: Navigate directly to \`/admin/login\` or click the "Admin Login" button on the main user homepage.
+*   **Authentication Methods**: Can be logged in via Google Auth or Staff ID/Password.
 *   **How it Works**:
     *   Upon successful login, the system creates a session and redirects the user to the Admin Dashboard.
-    *   The system checks the `adminusers` collection in Firestore to verify credentials and determine the user's role.
+    *   The system checks the \`adminusers\` collection in Firestore to verify credentials and determine the user's role.
     *   Incorrect login attempts will display an error message toast.
 
 ---
@@ -26,7 +47,7 @@ The gateway to the admin panel.
 
 The admin panel is organized into several key sections, accessible via the main sidebar navigation.
 
-### 3.1. Dashboard (`/admin/dashboard`)
+### 3.1. Dashboard (\`/admin/dashboard\`)
 
 The central hub providing an overview of library operations.
 
@@ -38,51 +59,51 @@ The central hub providing an overview of library operations.
     *   **Overdue Book List**: A table showing books that are overdue (currently using static placeholder data for demonstration).
     *   **Statistics Chart**: A bar chart visualizing visitor and borrower statistics over a week (static data).
 
-### 3.2. Books (`/admin/books`)
+### 3.2. Books (\`/admin/books\`)
 
 Manage the library's entire collection.
 
 *   **What it is**: A page for full CRUD (Create, Read, Update, Delete) operations on books.
 *   **How it Works**:
-    *   **View Books**: Displays a real-time list of all books from the `books` collection in Firestore.
+    *   **View Books**: Displays a real-time list of all books from the \`books\` collection in Firestore.
     *   **Search**: A search bar allows for quick filtering of the book list (client-side filtering).
     *   **Add New Book**:
         *   Clicking "Add New Book" opens a dialog form.
         *   Admins can input Title, Author, and Status.
-        *   **RFID Scan Simulation**: An integrated "Scan" button simulates an RFID reader. The system listens for keyboard input, and pressing "Enter" captures the typed string as the `rfidTagId`.
+        *   **RFID Scan Simulation**: An integrated "Scan" button simulates an RFID reader. The system listens for keyboard input, and pressing "Enter" captures the typed string as the \`rfidTagId\`.
     *   **Delete Book**: Each book has a delete option (in the "..." menu). This action is protected by a confirmation dialog to prevent accidental deletion.
 
-### 3.3. Members (`/admin/members`)
+### 3.3. Members (\`/admin/members\`)
 
 Manage student and staff accounts.
 
 *   **What it is**: A page for managing all library members.
 *   **How it Works**:
-    *   **View Members**: Displays a real-time list of all members from the `members` collection.
+    *   **View Members**: Displays a real-time list of all members from the \`members\` collection.
     *   **Add New Member**:
         *   The "Add New Member" form captures Name, Email, and Member Type (Student/Staff).
         *   It also includes the same RFID scan simulation for assigning a member's card ID.
     *   **Delete Member**: Members can be deleted from the system via the action menu, with a confirmation step.
 
-### 3.4. Users (`/admin/users`)
+### 3.4. Users (\`/admin/users\`)
 
 Manage accounts for other administrators and staff.
 
 *   **What it is**: A high-security page for managing who can access the admin panel.
 *   **How it Works**:
-    *   **View Users**: Lists all accounts from the `adminusers` collection, showing their name, role, and staff ID.
-    *   **Add New User**: A form allows the Super Admin to create new staff accounts, assigning them a `displayName`, `staffId`, `password`, and a `role` (e.g., Librarian, Assistant).
+    *   **View Users**: Lists all accounts from the \`adminusers\` collection, showing their name, role, and staff ID.
+    *   **Add New User**: A form allows the Super Admin to create new staff accounts, assigning them a \`displayName\`, \`staffId\`, \`password\`, and a \`role\` (e.g., Librarian, Assistant).
     *   **Delete User**: Super Admins can delete other user accounts. The system prevents you from deleting your own account.
 *   **Permissions**: This page is **exclusively accessible to users with the "Super Admin" role**.
 
-### 3.5. History (`/admin/history`)
+### 3.5. History (\`/admin/history\`)
 
 View a log of all circulation events.
 
 *   **What it is**: A read-only log of all book issues and returns.
-*   **How it Works**: The page currently displays a static table of sample log data. In a full implementation, this would be populated from the `circulationLogs` collection in Firestore.
+*   **How it Works**: The page currently displays a static table of sample log data. In a full implementation, this would be populated from the \`circulationLogs\` collection in Firestore.
 
-### 3.6. Settings (`/admin/settings`)
+### 3.6. Settings (\`/admin/settings\`)
 
 Configure system-wide policies and preferences.
 
@@ -97,10 +118,44 @@ Configure system-wide policies and preferences.
 
 The admin panel has a role-based access control system to ensure security, which is currently simplified for full access.
 
-*   **Current State**: All database operations are open (`allow read, write: if true;` in `firestore.rules`). All client-side permission checks have been removed to ensure functionality for any logged-in user.
+*   **Current State**: All database operations are open (\`allow read, write: if true;\` in \`firestore.rules\`). All client-side permission checks have been removed to ensure functionality for any logged-in user.
 *   **Intended Roles**:
-    *   **Super Admin**: The highest level. Has full access to all features, including the ability to create and delete other admin users. Your account (`23di21`) is the designated Super Admin.
+    *   **Super Admin**: The highest level. Has full access to all features, including the ability to create and delete other admin users. The account with staffId \`23di21\` is the designated Super Admin.
     *   **Librarian**: Can manage books and members but cannot access the "Users" page.
     *   **Assistant/Logger**: Would have more restricted, read-only permissions.
+`;
 
-The system is designed to have permissions enforced both on the **client-side** (by hiding or disabling buttons based on the user's role fetched from Firestore) and on the **server-side** via **Firestore Security Rules**. This dual enforcement ensures the database remains secure. However, as requested, these rules are currently open to ensure an unblocked user experience.
+
+export async function answerAdminQuestion(
+  input: AdminSupportInput
+): Promise<AdminSupportOutput> {
+  return adminSupportFlow(input);
+}
+
+const prompt = ai.definePrompt({
+  name: 'adminSupportPrompt',
+  input: {schema: AdminSupportInputSchema},
+  output: {schema: AdminSupportOutputSchema},
+  prompt: `You are a helpful support assistant for the Quicklook Admin Panel. Your task is to answer questions based ONLY on the provided documentation. If the answer is not in the documentation, you must state that you do not have that information. Do not make up answers.
+
+Here is the documentation:
+---
+${adminDocumentation}
+---
+
+Question: {{{question}}}
+Answer:
+`,
+});
+
+const adminSupportFlow = ai.defineFlow(
+  {
+    name: 'adminSupportFlow',
+    inputSchema: AdminSupportInputSchema,
+    outputSchema: AdminSupportOutputSchema,
+  },
+  async input => {
+    const {output} = await prompt(input);
+    return output!;
+  }
+);

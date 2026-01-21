@@ -137,7 +137,7 @@ export default function ReturnPage() {
             <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
-                         <CardTitle className="flex items-center gap-2"><BookCheck className="h-5 w-5" /> Issued Books</CardTitle>
+                         <CardTitle className="flex items-center gap-2"><BookCheck className="h-5 w-5" /> Currently Borrowed Books</CardTitle>
                          <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">{allBooks?.length ?? 0} Total</span>
                     </div>
                 </CardHeader>
@@ -169,7 +169,7 @@ export default function ReturnPage() {
                             </TableBody>
                         </Table>
                          {error && <p className="text-red-500 text-center p-4">Error loading books: {error.message}</p>}
-                        {!loading && filteredBooks.length === 0 && <p className="text-muted-foreground text-center p-8">No issued books match your search.</p>}
+                        {!loading && filteredBooks.length === 0 && <p className="text-muted-foreground text-center p-8">No issued books found.</p>}
                     </div>
                 </CardContent>
             </Card>

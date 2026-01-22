@@ -5,7 +5,7 @@ import { Logo } from '@/components/Logo';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
-import { LayoutDashboard, Book, Users, History, Settings, LogOut, HelpCircle, UserCog } from 'lucide-react';
+import { LayoutDashboard, Book, Users, History, Settings, LogOut, HelpCircle, UserCog, BookHeart } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/firebase';
@@ -18,6 +18,7 @@ const navItems = [
   { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/books', icon: Book, label: 'Books' },
   { href: '/admin/members', icon: Users, label: 'Members' },
+  { href: '/admin/circulation', icon: BookHeart, label: 'Issue & Return' },
   { href: '/admin/users', icon: UserCog, label: 'Users', requiredRole: 'Super Admin' },
   { href: '/admin/history', icon: History, label: 'History' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
@@ -31,18 +32,17 @@ export function AdminSidebar() {
   const { adminUser, loading } = useAdminUser();
 
   const handleLogout = async () => {
-    sessionStorage.removeItem('admin_staff_id');
+    sessionStorage.removeItem('admin_doc_id');
     
     if (auth && auth.currentUser) {
       await signOut(auth);
     }
     
-    // Redirect to the main homepage after logout
     router.push('/');
   };
 
   const visibleNavItems = useMemo(() => {
-    if (loading) return []; // Return an empty array while loading to prevent flash of incorrect items
+    if (loading) return []; 
     return navItems.filter(item => {
       if (!item.requiredRole) return true;
       return adminUser?.role === item.requiredRole;
@@ -66,7 +66,7 @@ export function AdminSidebar() {
           <Button
             key={item.href}
             asChild
-            variant={pathname === item.href ? 'secondary' : 'ghost'}
+            variant={pathname.startsWith(item.href) ? 'secondary' : 'ghost'}
             className="justify-start"
           >
             <Link href={item.href}>

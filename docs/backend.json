@@ -58,13 +58,14 @@
             "properties": {
                 "bookId": { "type": "string" },
                 "memberId": { "type": "string" },
-                "action": { "type": "string", "enum": ["issue", "return", "renew", "force-issue"] },
+                "action": { "type": "string", "enum": ["issue", "return"] },
+                "status": { "type": "string", "enum": ["issued", "returned", "overdue"] },
+                "issuedAt": { "type": "string", "format": "date-time" },
                 "dueDate": { "type": "string", "format": "date-time" },
                 "returnedAt": { "type": "string", "format": "date-time" },
-                "actorId": { "type": "string", "description": "The UID of the admin who performed the action." },
-                "timestamp": { "type": "string", "format": "date-time" }
+                "actorId": { "type": "string", "description": "The UID of the admin who performed the action." }
             },
-            "required": ["bookId", "memberId", "action", "actorId", "timestamp"]
+            "required": ["bookId", "memberId", "action", "actorId", "issuedAt", "status"]
         },
         "InventoryScan": {
             "title": "Inventory Scan",

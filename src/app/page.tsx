@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,8 +19,93 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import Link from 'next/link';
+import { useFirestore, useCollection } from '@/firebase';
+import { collection, query } from 'firebase/firestore';
+import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from '@/components/ui/popover';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type ScanState = 'idle' | 'verified' | 'options';
+
+interface Book {
+  id: string;
+  title: string;
+  author: string;
+  quantityTotal: number;
+  quantityIssued: number;
+}
+
+function SearchComponent() {
+  const firestore = useFirestore();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isPopoverOpen, setPopoverOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+
+  const booksQuery = useMemo(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'books'));
+  }, [firestore]);
+
+  const { data: books, loading: booksLoading } = useCollection<Book>(booksQuery);
+
+  const filteredBooks = useMemo(() => {
+    if (!searchTerm.trim() || !books) return [];
+    return books.filter(book =>
+      book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      book.author.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [searchTerm, books]);
+
+  useEffect(() => {
+      setPopoverOpen(searchTerm.trim().length > 0);
+  }, [searchTerm, filteredBooks]);
+
+  return (
+    <Popover open={isPopoverOpen} onOpenChange={setPopoverOpen}>
+        <div className="relative w-full shadow-md rounded-full">
+            <PopoverAnchor asChild>
+                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
+            </PopoverAnchor>
+            <PopoverTrigger asChild>
+                <Input
+                    ref={inputRef}
+                    placeholder="Search for any book..."
+                    className="pl-12 pr-4 h-14 rounded-full text-lg"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </PopoverTrigger>
+        </div>
+        <PopoverContent 
+            className="w-[--radix-popover-trigger-width] mt-2 p-2"
+            onOpenAutoFocus={(e) => e.preventDefault()} // Prevent focus stealing
+        >
+            {booksLoading && (
+                <div className="p-2 space-y-2">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-3/4" />
+                </div>
+            )}
+            {!booksLoading && filteredBooks.length > 0 && (
+                <ul className="space-y-1">
+                    {filteredBooks.slice(0, 5).map(book => (
+                        <li key={book.id} className="p-2 rounded-md hover:bg-accent cursor-pointer text-sm">
+                            <p className="font-medium">{book.title}</p>
+                            <p className="text-xs text-muted-foreground">{book.author}</p>
+                        </li>
+                    ))}
+                </ul>
+            )}
+            {!booksLoading && filteredBooks.length === 0 && searchTerm && (
+                 <div className="p-4 text-center text-sm text-muted-foreground">
+                    No books found for "{searchTerm}".
+                </div>
+            )}
+        </PopoverContent>
+    </Popover>
+  )
+}
+
 
 export default function Home() {
   const [scanState, setScanState] = useState<ScanState>('idle');
@@ -114,12 +199,9 @@ export default function Home() {
         {scanState === 'options' && (
             <div className="flex flex-col items-center gap-8 w-full max-w-2xl px-4">
                 <Logo className="mb-4" iconClassName="h-10 w-10" textClassName="text-4xl" />
-                <div className="relative w-full shadow-md rounded-full">
-                    <Input placeholder="Search..." className="pl-4 pr-12 h-12 rounded-full text-lg" />
-                    <Button size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full">
-                        <Search className="h-5 w-5" />
-                    </Button>
-                </div>
+                
+                <SearchComponent />
+
                 <div className="flex w-full gap-8">
                     <AlertDialog>
                       <AlertDialogTrigger asChild>

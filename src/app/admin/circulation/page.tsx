@@ -1,19 +1,18 @@
-
 'use client';
-import { useState, useMemo, useEffect, Fragment } from 'react';
+import { useState, useMemo, useEffect, Fragment, useCallback } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, ScanLine, X, BookUp, BookDown, User, Users, Library, XCircle, ArrowRight } from 'lucide-react';
+import { Search, X, BookUp, BookDown, User, Users, Library, XCircle, BookCheck } from 'lucide-react';
 import { AdminUserProvider, useAdminUser } from '@/context/AdminUserContext';
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, where, writeBatch, doc, getDocs, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, query, where, writeBatch, doc, getDocs, serverTimestamp, increment, getDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { addDays, format } from 'date-fns';
@@ -22,14 +21,30 @@ interface Book {
   id: string;
   title: string;
   author: string;
-  rfidTagId: string;
-  status: 'available' | 'issued' | 'lost' | 'damaged' | 'reserved';
+  quantityTotal: number;
+  quantityIssued: number;
 }
 interface Member {
   id: string;
   name: string;
   email: string;
 }
+interface CirculationLog {
+  id: string;
+  bookId: string;
+  memberId: string;
+  action: 'issue' | 'return';
+  status: 'issued' | 'returned' | 'overdue';
+  issuedAt?: { seconds: number; nanoseconds: number };
+  dueDate?: { seconds: number; nanoseconds: number };
+  returnedAt?: { seconds: number; nanoseconds: number };
+  actorId: string;
+}
+interface EnrichedLog extends CirculationLog {
+    bookTitle?: string;
+    bookAuthor?: string;
+}
+
 
 const loanPeriodDays = 14; 
 
@@ -49,9 +64,15 @@ function IssueTab() {
   const [bookSearch, setBookSearch] = useState('');
 
   const { data: members, loading: membersLoading } = useCollection<Member>(useMemo(() => firestore ? query(collection(firestore, 'members')) : null, [firestore]));
-  const { data: availableBooks, loading: booksLoading } = useCollection<Book>(useMemo(() => firestore ? query(collection(firestore, 'books'), where('status', '==', 'available')) : null, [firestore]));
+  
+  const { data: allBooks, loading: booksLoading } = useCollection<Book>(useMemo(() => firestore ? query(collection(firestore, 'books')) : null, [firestore]));
 
   const filteredMembers = useMemo(() => members?.filter(m => m.name.toLowerCase().includes(memberSearch.toLowerCase())), [members, memberSearch]);
+  
+  const availableBooks = useMemo(() => {
+    return allBooks?.filter(b => (b.quantityTotal - b.quantityIssued) > 0);
+  }, [allBooks]);
+
   const filteredBooks = useMemo(() => availableBooks?.filter(b => b.title.toLowerCase().includes(bookSearch.toLowerCase())), [availableBooks, bookSearch]);
 
   const handleSelectBook = (book: Book) => {
@@ -73,11 +94,9 @@ function IssueTab() {
         const dueDate = addDays(new Date(), loanPeriodDays);
 
         for (const book of booksToIssue) {
-            // Update book status
             const bookRef = doc(firestore, 'books', book.id);
-            batch.update(bookRef, { status: 'issued' });
+            batch.update(bookRef, { quantityIssued: increment(1) });
 
-            // Create circulation log
             const logRef = doc(collection(firestore, 'circulationLogs'));
             batch.set(logRef, {
                 bookId: book.id,
@@ -91,7 +110,7 @@ function IssueTab() {
         }
         await batch.commit();
         toast({title: 'Success', description: `${booksToIssue.length} book(s) issued to ${selectedMember.name}.`});
-        // Reset state
+        
         setSelectedMember(null);
         setBooksToIssue([]);
 
@@ -130,7 +149,7 @@ function IssueTab() {
                                 <ScrollArea className="h-72">
                                 <div className="space-y-2">
                                 {membersLoading ? <p>Loading...</p> : filteredMembers?.map(member => (
-                                    <div key={member.id} className="flex items-center justify-between p-2 rounded-md hover:bg-accent" onClick={() => {setSelectedMember(member); setMemberDialogOpen(false);}}>
+                                    <div key={member.id} className="flex items-center justify-between p-2 rounded-md hover:bg-accent cursor-pointer" onClick={() => {setSelectedMember(member); setMemberDialogOpen(false);}}>
                                         <div><p>{member.name}</p><p className="text-xs text-muted-foreground">{member.email}</p></div>
                                         <Button variant="ghost" size="sm">Select</Button>
                                     </div>
@@ -156,12 +175,13 @@ function IssueTab() {
                              <Input placeholder="Search books..." value={bookSearch} onChange={(e) => setBookSearch(e.target.value)} />
                             <ScrollArea className="h-72">
                                 <Table>
-                                    <TableHeader><TableRow><TableHead>Title</TableHead><TableHead>Author</TableHead><TableHead></TableHead></TableRow></TableHeader>
+                                    <TableHeader><TableRow><TableHead>Title</TableHead><TableHead>Author</TableHead><TableHead>Available</TableHead><TableHead></TableHead></TableRow></TableHeader>
                                     <TableBody>
-                                        {booksLoading ? <TableRow><TableCell colSpan={3}>Loading...</TableCell></TableRow> : filteredBooks?.map(book => (
+                                        {booksLoading ? <TableRow><TableCell colSpan={4}>Loading...</TableCell></TableRow> : filteredBooks?.map(book => (
                                             <TableRow key={book.id}>
                                                 <TableCell>{book.title}</TableCell>
                                                 <TableCell>{book.author}</TableCell>
+                                                <TableCell>{book.quantityTotal - book.quantityIssued}</TableCell>
                                                 <TableCell>
                                                     <Button size="sm" onClick={() => handleSelectBook(book)} disabled={booksToIssue.some(b => b.id === book.id)}>
                                                         {booksToIssue.some(b => b.id === book.id) ? 'Added' : 'Add'}
@@ -220,62 +240,80 @@ function ReturnTab() {
   const { adminUser } = useAdminUser();
   const { toast } = useToast();
 
-  const [booksToReturn, setBooksToReturn] = useState<Book[]>([]);
-  const [isScanning, setIsScanning] = useState(false);
-  const [scannedId, setScannedId] = useState('');
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [issuedLogs, setIssuedLogs] = useState<EnrichedLog[]>([]);
+  const [booksToReturn, setBooksToReturn] = useState<EnrichedLog[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
-  const { data: issuedBooks, loading: booksLoading } = useCollection<Book>(useMemo(() => firestore ? query(collection(firestore, 'books'), where('status', '==', 'issued')) : null, [firestore]));
+  const [isMemberDialogOpen, setMemberDialogOpen] = useState(false);
+  const [memberSearch, setMemberSearch] = useState('');
+
+  const { data: members, loading: membersLoading } = useCollection<Member>(useMemo(() => firestore ? query(collection(firestore, 'members')) : null, [firestore]));
+  const filteredMembers = useMemo(() => members?.filter(m => m.name.toLowerCase().includes(memberSearch.toLowerCase())), [members, memberSearch]);
+
+  const fetchIssuedBooks = useCallback(async (memberId: string) => {
+      if (!firestore) return;
+      setIsLoadingLogs(true);
+      
+      const logsQuery = query(collection(firestore, 'circulationLogs'), where('memberId', '==', memberId), where('status', '==', 'issued'));
+      const logSnapshot = await getDocs(logsQuery);
+      
+      const enrichedLogsPromises = logSnapshot.docs.map(async (logDoc) => {
+          const logData = logDoc.data() as CirculationLog;
+          const bookRef = doc(firestore, 'books', logData.bookId);
+          const bookSnap = await getDoc(bookRef);
+          return {
+              ...logData,
+              id: logDoc.id,
+              bookTitle: bookSnap.exists() ? bookSnap.data().title : 'Unknown Book',
+              bookAuthor: bookSnap.exists() ? bookSnap.data().author : 'Unknown Author',
+          };
+      });
+      
+      const logs = await Promise.all(enrichedLogsPromises);
+      setIssuedLogs(logs);
+      setIsLoadingLogs(false);
+  }, [firestore]);
 
   useEffect(() => {
-    if (!isScanning) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Enter' && scannedId) {
-        const foundBook = issuedBooks?.find(b => b.rfidTagId === scannedId);
-        if (foundBook) {
-          if (!booksToReturn.some(b => b.id === foundBook.id)) {
-            setBooksToReturn(prev => [...prev, foundBook]);
-            toast({ title: 'Book Added to Return List', description: foundBook.title });
-          } else {
-            toast({ variant: 'destructive', title: 'Duplicate Scan', description: 'This book is already in the return list.' });
-          }
-        } else {
-          toast({ variant: 'destructive', title: 'Book Not Found', description: `No issued book found with RFID: ${scannedId}` });
-        }
-        setScannedId('');
-      } else if (event.key.length === 1) {
-        setScannedId(prev => prev + event.key);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isScanning, scannedId, issuedBooks, booksToReturn, toast]);
+    if (selectedMember) {
+        fetchIssuedBooks(selectedMember.id);
+    } else {
+        setIssuedLogs([]);
+        setBooksToReturn([]);
+    }
+  }, [selectedMember, fetchIssuedBooks]);
   
-  const handleRemoveBook = (bookId: string) => setBooksToReturn(booksToReturn.filter(b => b.id !== bookId));
+  const handleSelectBookToReturn = (log: EnrichedLog) => {
+      if (!booksToReturn.some(l => l.id === log.id)) {
+          setBooksToReturn(prev => [...prev, log]);
+      }
+  };
+  const handleRemoveBook = (logId: string) => setBooksToReturn(booksToReturn.filter(l => l.id !== logId));
 
   const handleReturn = async () => {
     if (booksToReturn.length === 0 || !firestore || !adminUser) return;
     setIsProcessing(true);
     try {
         const batch = writeBatch(firestore);
-        for(const book of booksToReturn) {
-            const bookRef = doc(firestore, 'books', book.id);
-            batch.update(bookRef, { status: 'available' });
+        for(const log of booksToReturn) {
+            const bookRef = doc(firestore, 'books', log.bookId);
+            batch.update(bookRef, { quantityIssued: increment(-1) });
 
-            const logQuery = query(collection(firestore, 'circulationLogs'), where('bookId', '==', book.id), where('status', '==', 'issued'));
-            const logSnapshot = await getDocs(logQuery);
-            if (!logSnapshot.empty) {
-                const logDocRef = logSnapshot.docs[0].ref;
-                batch.update(logDocRef, {
-                    status: 'returned',
-                    action: 'return',
-                    returnedAt: serverTimestamp(),
-                });
-            }
+            const logDocRef = doc(firestore, 'circulationLogs', log.id);
+            batch.update(logDocRef, {
+                status: 'returned',
+                action: 'return',
+                returnedAt: serverTimestamp(),
+            });
         }
         await batch.commit();
         toast({title: 'Success', description: `${booksToReturn.length} book(s) have been returned.`});
         setBooksToReturn([]);
+        if (selectedMember) {
+            fetchIssuedBooks(selectedMember.id);
+        }
     } catch(e: any) {
         console.error(e);
         toast({variant: 'destructive', title: 'Return Failed', description: e.message});
@@ -288,39 +326,61 @@ function ReturnTab() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-2 space-y-6">
-            <Card>
-                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><ScanLine /> RFID Return Scanner</CardTitle>
+             <Card>
+                <CardHeader>
+                    <CardTitle>1. Select Member to Return Books For</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex flex-col items-center justify-center space-y-4 p-4 border-2 border-dashed rounded-lg">
-                        <p className="text-sm text-center text-muted-foreground">
-                           {isScanning ? 'Scanner is active. Present books now.' : 'Activate the scanner to add books to the return list.'}
-                        </p>
-                        <Button onClick={() => setIsScanning(p => !p)} variant={isScanning ? 'destructive' : 'default'} className="w-full max-w-sm">
-                            {isScanning ? 'Deactivate Scanner' : 'Activate RFID Scanner'}
-                        </Button>
-                         {isScanning && (
-                            <p className="text-xs text-primary animate-pulse text-center">
-                                Listening for RFID tags... <br/> (Simulated via keyboard input + Enter)
-                            </p>
-                        )}
-                    </div>
+                    {selectedMember ? (
+                        <div className="flex items-center justify-between p-4 border rounded-lg">
+                           <div>
+                             <p className="font-semibold">{selectedMember.name}</p>
+                             <p className="text-sm text-muted-foreground">{selectedMember.email}</p>
+                           </div>
+                           <Button variant="outline" onClick={() => setSelectedMember(null)}>Change</Button>
+                        </div>
+                    ) : (
+                         <Dialog open={isMemberDialogOpen} onOpenChange={setMemberDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button className="w-full" variant="outline"><User className="mr-2"/> Select a Member</Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md">
+                                <DialogHeader><DialogTitle>Select Library Member</DialogTitle></DialogHeader>
+                                <Input placeholder="Search members..." value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
+                                <ScrollArea className="h-72">
+                                <div className="space-y-2">
+                                {membersLoading ? <p>Loading...</p> : filteredMembers?.map(member => (
+                                    <div key={member.id} className="flex items-center justify-between p-2 rounded-md hover:bg-accent cursor-pointer" onClick={() => {setSelectedMember(member); setMemberDialogOpen(false);}}>
+                                        <div><p>{member.name}</p><p className="text-xs text-muted-foreground">{member.email}</p></div>
+                                        <Button variant="ghost" size="sm">Select</Button>
+                                    </div>
+                                ))}
+                                </div>
+                                </ScrollArea>
+                            </DialogContent>
+                         </Dialog>
+                    )}
                 </CardContent>
             </Card>
             <Card>
-                <CardHeader><CardTitle>All Issued Books</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="flex items-center gap-2"><BookCheck /> Books Issued to {selectedMember?.name || 'Member'}</CardTitle></CardHeader>
                 <CardContent>
                     <ScrollArea className="h-72">
                     <Table>
-                        <TableHeader><TableRow><TableHead>Title</TableHead><TableHead>Author</TableHead><TableHead>RFID Tag ID</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead>Title</TableHead><TableHead>Author</TableHead><TableHead>Due Date</TableHead><TableHead></TableHead></TableRow></TableHeader>
                         <TableBody>
-                            {booksLoading && <TableRow><TableCell colSpan={3}>Loading...</TableCell></TableRow>}
-                            {!booksLoading && issuedBooks?.map(book => (
-                                <TableRow key={book.id}>
-                                    <TableCell>{book.title}</TableCell>
-                                    <TableCell>{book.author}</TableCell>
-                                    <TableCell>{book.rfidTagId}</TableCell>
+                            {isLoadingLogs && <TableRow><TableCell colSpan={4} className="text-center">Loading issued books...</TableCell></TableRow>}
+                            {!isLoadingLogs && issuedLogs.length === 0 && <TableRow><TableCell colSpan={4} className="text-center">No books currently issued to this member.</TableCell></TableRow>}
+                            {!isLoadingLogs && issuedLogs.map(log => (
+                                <TableRow key={log.id}>
+                                    <TableCell>{log.bookTitle}</TableCell>
+                                    <TableCell>{log.bookAuthor}</TableCell>
+                                    <TableCell>{log.dueDate ? format(log.dueDate.seconds * 1000, 'MMM dd, yyyy') : 'N/A'}</TableCell>
+                                    <TableCell>
+                                        <Button size="sm" onClick={() => handleSelectBookToReturn(log)} disabled={booksToReturn.some(b => b.id === log.id)}>
+                                            {booksToReturn.some(b => b.id === log.id) ? 'Selected' : 'Return'}
+                                        </Button>
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -338,15 +398,15 @@ function ReturnTab() {
                         {booksToReturn.length > 0 ? (
                             <ScrollArea className="h-48">
                             <div className="space-y-2 pr-4">
-                            {booksToReturn.map(book => (
-                                <div key={book.id} className="text-sm flex justify-between items-center bg-muted/50 p-2 rounded-md">
-                                    <span>{book.title}</span>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveBook(book.id)}><XCircle className="h-4 w-4"/></Button>
+                            {booksToReturn.map(log => (
+                                <div key={log.id} className="text-sm flex justify-between items-center bg-muted/50 p-2 rounded-md">
+                                    <span>{log.bookTitle}</span>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveBook(log.id)}><XCircle className="h-4 w-4"/></Button>
                                 </div>
                             ))}
                             </div>
                             </ScrollArea>
-                        ) : <p className="text-muted-foreground text-sm">No books scanned for return.</p>}
+                        ) : <p className="text-muted-foreground text-sm">No books selected for return.</p>}
                     </div>
                 </CardContent>
                 <CardFooter>
@@ -392,4 +452,3 @@ export default function CirculationPage() {
         </AdminUserProvider>
     )
 }
-

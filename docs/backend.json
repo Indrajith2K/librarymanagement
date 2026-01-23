@@ -3,26 +3,18 @@
     "entities": {
         "Book": {
             "title": "Book",
-            "description": "Represents a single book in the library's collection.",
+            "description": "Represents a book title in the library's collection, with quantities for stock management.",
             "type": "object",
             "properties": {
                 "title": { "type": "string", "description": "The title of the book." },
                 "author": { "type": "string", "description": "The author of the book." },
-                "isbn": { "type": "string", "description": "The International Standard Book Number." },
                 "category": { "type": "string", "description": "The genre or category of the book." },
-                "shelfLocation": { "type": "string", "description": "The physical location of the book in the library." },
-                "rfidTagId": { "type": "string", "description": "The ID of the RFID tag assigned to this book." },
-                "status": {
-                    "type": "string",
-                    "description": "The current status of the book.",
-                    "enum": ["available", "issued", "lost", "damaged", "reserved"]
-                },
-                "isDeleted": { "type": "boolean", "description": "Flag for soft-deleting the book." },
-                "lostOrDamagedNote": { "type": "string", "description": "A note explaining why a book is lost or damaged." },
+                "quantityTotal": { "type": "number", "description": "The total number of copies of this book in stock." },
+                "quantityIssued": { "type": "number", "description": "The number of copies currently issued to members." },
                 "createdAt": { "type": "string", "format": "date-time" },
                 "updatedAt": { "type": "string", "format": "date-time" }
             },
-            "required": ["title", "author", "status", "isDeleted"]
+            "required": ["title", "author", "category", "quantityTotal", "quantityIssued"]
         },
         "Member": {
             "title": "Member",

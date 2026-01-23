@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BookUp, MoreHorizontal, Search, ScanLine, Trash2, FilePenLine } from 'lucide-react';
+import { BookUp, MoreHorizontal, Search, Trash2, FilePenLine } from 'lucide-react';
 import { AdminUserProvider, useAdminUser } from '@/context/AdminUserContext';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, addDoc, serverTimestamp, doc, deleteDoc, updateDoc } from 'firebase/firestore';
@@ -16,7 +16,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -26,17 +25,21 @@ interface Book {
   title: string;
   author: string;
   category: string;
-  rfidTagId: string;
-  status: 'available' | 'issued' | 'lost' | 'damaged' | 'reserved';
+  quantityTotal: number;
+  quantityIssued: number;
 }
 
 const bookSchema = z.object({
     title: z.string().min(1, "Title is required"),
     author: z.string().min(1, "Author is required"),
     category: z.string().min(1, "Genre is required"),
-    rfidTagId: z.string().min(1, "RFID Tag ID is required"),
-    status: z.enum(['available', 'issued', 'lost', 'damaged', 'reserved']).default('available'),
+    quantityTotal: z.preprocess(
+      (val) => (typeof val === 'string' && val.length > 0 ? parseInt(val, 10) : val),
+      z.number({invalid_type_error: "Must be a number"}).min(0, "Quantity must be a non-negative number")
+    ),
+    quantityIssued: z.number().optional(), // Used for validation context
 });
+
 
 type BookFormData = z.infer<typeof bookSchema>;
 
@@ -44,18 +47,27 @@ function BookForm({ onFinished, initialData }: { onFinished: () => void; initial
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isScanning, setIsScanning] = useState(false);
-    const [scannedId, setScannedId] = useState('');
     const isEditMode = !!initialData;
 
     const form = useForm<BookFormData>({
-        resolver: zodResolver(bookSchema),
+        resolver: zodResolver(bookSchema.refine(
+            (data) => {
+                if (isEditMode && initialData) {
+                    // Ensure new total is not less than already issued books
+                    return data.quantityTotal >= initialData.quantityIssued;
+                }
+                return true;
+            },
+            {
+                message: `Total quantity cannot be less than the currently issued amount (${initialData?.quantityIssued || 0}).`,
+                path: ["quantityTotal"],
+            }
+        )),
         defaultValues: initialData || {
             title: '',
             author: '',
             category: '',
-            rfidTagId: '',
-            status: 'available',
+            quantityTotal: 0,
         },
     });
 
@@ -64,29 +76,9 @@ function BookForm({ onFinished, initialData }: { onFinished: () => void; initial
             title: '',
             author: '',
             category: '',
-            rfidTagId: '',
-            status: 'available',
+            quantityTotal: 0,
         });
     }, [initialData, form]);
-
-    useEffect(() => {
-        if (!isScanning) return;
-
-        const handleKeyDown = (event: KeyboardEvent) => {
-          if (event.key === 'Enter' && scannedId) {
-            form.setValue('rfidTagId', scannedId);
-            setIsScanning(false);
-            setScannedId('');
-            toast({ title: 'Scan Complete', description: `RFID ${scannedId} captured.` });
-          } else if (event.key.length === 1) {
-            setScannedId(prev => prev + event.key);
-          }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-
-    }, [isScanning, scannedId, form, toast]);
 
     async function onSubmit(values: BookFormData) {
         if (!firestore) {
@@ -95,7 +87,7 @@ function BookForm({ onFinished, initialData }: { onFinished: () => void; initial
         }
         setIsSubmitting(true);
         try {
-            if (isEditMode) {
+            if (isEditMode && initialData) {
                 const bookRef = doc(firestore, 'books', initialData.id);
                 await updateDoc(bookRef, {
                     ...values,
@@ -105,7 +97,7 @@ function BookForm({ onFinished, initialData }: { onFinished: () => void; initial
             } else {
                 await addDoc(collection(firestore, 'books'), {
                     ...values,
-                    isDeleted: false,
+                    quantityIssued: 0, // New books have 0 issued
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp(),
                 });
@@ -164,68 +156,22 @@ function BookForm({ onFinished, initialData }: { onFinished: () => void; initial
                 />
                 <FormField
                     control={form.control}
-                    name="rfidTagId"
+                    name="quantityTotal"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>RFID Tag ID</FormLabel>
-                            <div className="flex items-center gap-2">
-                                <FormControl>
-                                    <Input 
-                                        placeholder={isScanning ? "Scanning..." : "Enter ID or scan"} 
-                                        {...field}
-                                        disabled={isScanning}
-                                    />
-                                </FormControl>
-                                <Button 
-                                    type="button" 
-                                    variant="outline"
-                                    onClick={() => {
-                                        setIsScanning(prev => !prev);
-                                        setScannedId('');
-                                    }}
-                                >
-                                    <ScanLine className="h-4 w-4" />
-                                    <span className="ml-2 hidden sm:inline">{isScanning ? 'Cancel' : 'Scan'}</span>
-                                </Button>
-                            </div>
-                            {isScanning && (
-                                <p className="text-sm text-primary animate-pulse p-2 bg-primary/10 rounded-md">
-                                    Ready to scan. Please present the RFID tag...
-                                </p>
-                            )}
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Status</FormLabel>
-                             <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a status" />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    <SelectItem value="available">Available</SelectItem>
-                                    <SelectItem value="issued">Issued</SelectItem>
-                                    <SelectItem value="reserved">Reserved</SelectItem>
-                                    <SelectItem value="lost">Lost</SelectItem>
-                                    <SelectItem value="damaged">Damaged</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
+                            <FormLabel>Total Quantity</FormLabel>
+                            <FormControl>
+                                <Input type="number" placeholder="e.g. 10" {...field} />
+                            </FormControl>
+                             <FormMessage />
                         </FormItem>
                     )}
                 />
                 <DialogFooter>
                     <DialogClose asChild>
-                        <Button type="button" variant="outline" onClick={() => setIsScanning(false)}>Cancel</Button>
+                        <Button type="button" variant="outline">Cancel</Button>
                     </DialogClose>
-                    <Button type="submit" disabled={isSubmitting || isScanning}>
+                    <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting ? 'Saving...' : isEditMode ? 'Save Changes' : 'Add Book'}
                     </Button>
                 </DialogFooter>
@@ -257,8 +203,7 @@ function BooksPageContent() {
     return books.filter(book =>
       (book.title?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       (book.author?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (book.category?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (book.rfidTagId?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+      (book.category?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
   }, [books, searchTerm]);
 
@@ -295,7 +240,7 @@ function BooksPageContent() {
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input 
                             placeholder="Search books..." 
-                            className="pl-8" 
+                            className="pl-8 w-40 md:w-64" 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -330,38 +275,39 @@ function BooksPageContent() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="hidden md:table-cell">RFID Tag ID</TableHead>
                   <TableHead>Title</TableHead>
-                  <TableHead className="hidden sm:table-cell">Author</TableHead>
-                  <TableHead>Genre</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Author</TableHead>
+                  <TableHead className="hidden sm:table-cell">Genre</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Issued</TableHead>
+                  <TableHead>Available</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading && Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell className="hidden md:table-cell"><Skeleton className="h-8 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-8 w-48" /></TableCell>
-                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-8 w-32" /></TableCell>
-                    <TableCell><Skeleton className="h-8 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-8 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-32" /></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-8 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-12" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-12" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-12" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                   </TableRow>
                 ))}
-                {!loading && filteredBooks.map((book) => (
+                {!loading && filteredBooks.map((book) => {
+                  const available = book.quantityTotal - book.quantityIssued;
+                  return (
                   <TableRow key={book.id}>
-                    <TableCell className="hidden md:table-cell">{book.rfidTagId}</TableCell>
                     <TableCell className="font-medium">{book.title}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{book.author}</TableCell>
-                    <TableCell>{book.category}</TableCell>
+                    <TableCell>{book.author}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{book.category}</TableCell>
+                    <TableCell>{book.quantityTotal}</TableCell>
+                    <TableCell>{book.quantityIssued}</TableCell>
                     <TableCell>
-                        <span className={`px-2 py-1 text-xs rounded-full capitalize ${
-                            book.status === 'available' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' 
-                            : book.status === 'issued' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' 
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                        }`}>
-                            {book.status}
+                         <span className={`font-semibold ${available > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {available}
                         </span>
                     </TableCell>
                     <TableCell className="text-right">
@@ -401,7 +347,8 @@ function BooksPageContent() {
                         </AlertDialog>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
             {error && <p className="text-red-500 text-center p-4">Error loading books: {error.message}</p>}

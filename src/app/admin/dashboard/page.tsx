@@ -27,7 +27,8 @@ interface Book {
   id: string;
   title: string;
   author: string;
-  status: 'available' | 'issued' | 'lost' | 'damaged' | 'reserved';
+  quantityTotal: number;
+  quantityIssued: number;
 }
 
 const overdueBooks = [
@@ -180,20 +181,20 @@ function AdminDashboardContent() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>User Name</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>Books Issued</TableHead>
+                                    <TableHead className="hidden md:table-cell">Email</TableHead>
+                                    <TableHead className="hidden sm:table-cell">Books Issued</TableHead>
                                     <TableHead>Member Type</TableHead>
-                                    <TableHead>Action</TableHead>
+                                    <TableHead className="hidden sm:table-cell">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {membersLoading && Array.from({ length: 4 }).map((_, i) => (
                                     <TableRow key={i}>
                                         <TableCell><Skeleton className="h-6 w-24" /></TableCell>
-                                        <TableCell><Skeleton className="h-6 w-40" /></TableCell>
-                                        <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                                        <TableCell className="hidden md:table-cell"><Skeleton className="h-6 w-40" /></TableCell>
+                                        <TableCell className="hidden sm:table-cell"><Skeleton className="h-6 w-16" /></TableCell>
                                         <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                                        <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                                        <TableCell className="hidden sm:table-cell"><Skeleton className="h-8 w-8" /></TableCell>
                                     </TableRow>
                                 ))}
                                 {!membersLoading && members?.slice(0, 4).map((member) => (
@@ -205,10 +206,10 @@ function AdminDashboardContent() {
                                             </Avatar>
                                             {member.name}
                                         </TableCell>
-                                        <TableCell>{member.email}</TableCell>
-                                        <TableCell>0</TableCell>
+                                        <TableCell className="hidden md:table-cell">{member.email}</TableCell>
+                                        <TableCell className="hidden sm:table-cell">0</TableCell>
                                         <TableCell className="capitalize">{member.memberType}</TableCell>
-                                        <TableCell>
+                                        <TableCell className="hidden sm:table-cell">
                                             <Button variant="ghost" size="icon">
                                                 <MoreHorizontal className="h-4 w-4" />
                                             </Button>
@@ -236,40 +237,42 @@ function AdminDashboardContent() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Title</TableHead>
-                                    <TableHead>Author</TableHead>
+                                    <TableHead className="hidden sm:table-cell">Author</TableHead>
                                     <TableHead>Status</TableHead>
-                                    <TableHead>Action</TableHead>
+                                    <TableHead className="hidden sm:table-cell">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {booksLoading && Array.from({ length: 4 }).map((_, i) => (
                                     <TableRow key={i}>
                                         <TableCell><Skeleton className="h-6 w-32" /></TableCell>
-                                        <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                                        <TableCell className="hidden sm:table-cell"><Skeleton className="h-6 w-24" /></TableCell>
                                         <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                                        <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                                        <TableCell className="hidden sm:table-cell"><Skeleton className="h-8 w-8" /></TableCell>
                                     </TableRow>
                                 ))}
-                                {!booksLoading && books?.slice(0, 4).map((book) => (
-                                    <TableRow key={book.id}>
-                                        <TableCell className="font-medium">{book.title}</TableCell>
-                                        <TableCell>{book.author}</TableCell>
-                                        <TableCell>
-                                            <span className={`px-2 py-1 text-xs rounded-full capitalize ${
-                                                book.status === 'available' ? 'bg-green-100 text-green-800' 
-                                                : book.status === 'issued' ? 'bg-yellow-100 text-yellow-800' 
-                                                : 'bg-gray-100 text-gray-800'
-                                            }`}>
-                                                {book.status}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Button variant="ghost" size="icon">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                {!booksLoading && books?.slice(0, 4).map((book) => {
+                                    const available = book.quantityTotal - book.quantityIssued > 0;
+                                    return (
+                                        <TableRow key={book.id}>
+                                            <TableCell className="font-medium">{book.title}</TableCell>
+                                            <TableCell className="hidden sm:table-cell">{book.author}</TableCell>
+                                            <TableCell>
+                                                <span className={`px-2 py-1 text-xs rounded-full capitalize ${
+                                                    available ? 'bg-green-100 text-green-800' 
+                                                    : 'bg-yellow-100 text-yellow-800'
+                                                }`}>
+                                                    {available ? 'Available' : 'Out of Stock'}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="hidden sm:table-cell">
+                                                <Button variant="ghost" size="icon">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                         {booksError && <p className="text-red-500 text-center p-4">Error: {booksError.message}</p>}
@@ -282,7 +285,7 @@ function AdminDashboardContent() {
             
             <div>
                 <h2 className="text-2xl font-bold mb-4">Top Choices</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
                     {topChoices.map((book) => (
                         <div key={book.title} className="space-y-2">
                             <Image src={book.imageUrl} alt={book.title} width={200} height={300} className="rounded-md w-full object-cover aspect-[2/3] shadow-lg" data-ai-hint={book.imageHint}/>

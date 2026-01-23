@@ -37,7 +37,6 @@ const bookSchema = z.object({
       (val) => (typeof val === 'string' && val.length > 0 ? parseInt(val, 10) : val),
       z.number({invalid_type_error: "Must be a number"}).min(0, "Quantity must be a non-negative number")
     ),
-    quantityIssued: z.number().optional(), // Used for validation context
 });
 
 
@@ -63,22 +62,18 @@ function BookForm({ onFinished, initialData }: { onFinished: () => void; initial
                 path: ["quantityTotal"],
             }
         )),
-        defaultValues: initialData || {
+        defaultValues: initialData ? {
+            title: initialData.title,
+            author: initialData.author,
+            category: initialData.category,
+            quantityTotal: initialData.quantityTotal,
+        } : {
             title: '',
             author: '',
             category: '',
             quantityTotal: 0,
         },
     });
-
-     useEffect(() => {
-        form.reset(initialData || {
-            title: '',
-            author: '',
-            category: '',
-            quantityTotal: 0,
-        });
-    }, [initialData, form]);
 
     async function onSubmit(values: BookFormData) {
         if (!firestore) {
@@ -186,7 +181,7 @@ function BooksPageContent() {
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
-  const { loading: adminLoading } = useAdminUser();
+  const { adminUser, loading: adminLoading } = useAdminUser();
   const [searchTerm, setSearchTerm] = useState('');
 
   const booksQuery = useMemo(() => {
@@ -200,10 +195,11 @@ function BooksPageContent() {
     if (!books) {
       return [];
     }
+    const lowercasedTerm = searchTerm.toLowerCase();
     return books.filter(book =>
-      (book.title?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (book.author?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (book.category?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+      (book.title?.toLowerCase() || '').includes(lowercasedTerm) ||
+      (book.author?.toLowerCase() || '').includes(lowercasedTerm) ||
+      (book.category?.toLowerCase() || '').includes(lowercasedTerm)
     );
   }, [books, searchTerm]);
 

@@ -63,15 +63,17 @@ The central hub providing an overview of library operations.
 
 Manage the library's entire collection.
 
-*   **What it is**: A page for full CRUD (Create, Read, Update, Delete) operations on books.
+*   **What it is**: A page for full CRUD (Create, Read, Update, Delete) operations on book titles.
 *   **How it Works**:
-    *   **View Books**: Displays a real-time list of all books from the \`books\` collection in Firestore.
-    *   **Search**: A search bar allows for quick filtering of the book list (client-side filtering).
+    *   **View Books**: Displays a real-time list of all book titles from the \`books\` collection, showing total, issued, and available quantities.
+    *   **Search**: A search bar allows for quick filtering of the book list by title, author, or genre.
     *   **Add New Book**:
         *   Clicking "Add New Book" opens a dialog form.
-        *   Admins can input Title, Author, and Status.
-        *   **RFID Scan Simulation**: An integrated "Scan" button simulates an RFID reader. The system listens for keyboard input, and pressing "Enter" captures the typed string as the \`rfidTagId\`.
-    *   **Delete Book**: Each book has a delete option (in the "..." menu). This action is protected by a confirmation dialog to prevent accidental deletion.
+        *   Admins can input the Title, Author, Genre, and the Total Quantity of that book in stock.
+    *   **Edit Book**:
+        *   To change a book's details, find it in the list and click the "..." menu on the right.
+        *   Select "Edit" to open a form where you can update its title, author, genre, or total quantity.
+    *   **Delete Book**: Each book has a delete option in the "..." menu. This action is protected by a confirmation dialog.
 
 ### 3.3. Members (\`/admin/members\`)
 

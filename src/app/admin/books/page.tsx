@@ -48,12 +48,11 @@ function BookForm({ onFinished, initialData }: { onFinished: () => void; initial
     const [isSubmitting, setIsSubmitting] = useState(false);
     const isEditMode = !!initialData;
 
-    const form = useForm<BookFormData>({
-        resolver: zodResolver(bookSchema.refine(
+    const dynamicBookSchema = useMemo(() => {
+        return bookSchema.refine(
             (data) => {
                 if (isEditMode && initialData) {
-                    // Ensure new total is not less than already issued books
-                    return data.quantityTotal >= initialData.quantityIssued;
+                    return data.quantityTotal >= (initialData.quantityIssued || 0);
                 }
                 return true;
             },
@@ -61,7 +60,11 @@ function BookForm({ onFinished, initialData }: { onFinished: () => void; initial
                 message: `Total quantity cannot be less than the currently issued amount (${initialData?.quantityIssued || 0}).`,
                 path: ["quantityTotal"],
             }
-        )),
+        );
+    }, [initialData, isEditMode]);
+
+    const form = useForm<BookFormData>({
+        resolver: zodResolver(dynamicBookSchema),
         defaultValues: initialData ? {
             title: initialData.title,
             author: initialData.author,
@@ -196,7 +199,13 @@ function BooksPageContent() {
       return [];
     }
     const lowercasedTerm = searchTerm.toLowerCase();
-    return books.filter(book =>
+    const safeBooks = books.map(book => ({
+        ...book,
+        quantityTotal: book.quantityTotal || 0,
+        quantityIssued: book.quantityIssued || 0,
+    }));
+
+    return safeBooks.filter(book =>
       (book.title?.toLowerCase() || '').includes(lowercasedTerm) ||
       (book.author?.toLowerCase() || '').includes(lowercasedTerm) ||
       (book.category?.toLowerCase() || '').includes(lowercasedTerm)

@@ -70,10 +70,18 @@ function IssueTab() {
   const filteredMembers = useMemo(() => members?.filter(m => m.name.toLowerCase().includes(memberSearch.toLowerCase())), [members, memberSearch]);
   
   const availableBooks = useMemo(() => {
-    return allBooks?.filter(b => (b.quantityTotal - b.quantityIssued) > 0);
+    if (!allBooks) return [];
+    return allBooks.filter(b => ((b.quantityTotal || 0) - (b.quantityIssued || 0)) > 0);
   }, [allBooks]);
 
-  const filteredBooks = useMemo(() => availableBooks?.filter(b => b.title.toLowerCase().includes(bookSearch.toLowerCase())), [availableBooks, bookSearch]);
+  const filteredBooks = useMemo(() => {
+    if (!availableBooks) return [];
+    const lowercasedSearch = bookSearch.toLowerCase();
+    return availableBooks.filter(b => 
+        (b.title?.toLowerCase() || '').includes(lowercasedSearch) ||
+        (b.author?.toLowerCase() || '').includes(lowercasedSearch)
+    );
+  }, [availableBooks, bookSearch]);
 
   const handleSelectBook = (book: Book) => {
     if (!booksToIssue.some(b => b.id === book.id)) {
@@ -181,7 +189,7 @@ function IssueTab() {
                                             <TableRow key={book.id}>
                                                 <TableCell>{book.title}</TableCell>
                                                 <TableCell>{book.author}</TableCell>
-                                                <TableCell>{book.quantityTotal - book.quantityIssued}</TableCell>
+                                                <TableCell>{(book.quantityTotal || 0) - (book.quantityIssued || 0)}</TableCell>
                                                 <TableCell>
                                                     <Button size="sm" onClick={() => handleSelectBook(book)} disabled={booksToIssue.some(b => b.id === book.id)}>
                                                         {booksToIssue.some(b => b.id === book.id) ? 'Added' : 'Add'}

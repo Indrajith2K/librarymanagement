@@ -261,7 +261,8 @@ function BooksPageContent() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
-                       <BookForm 
+                       <BookForm
+                         key={editingBook?.id || 'new-book'}
                          initialData={editingBook}
                          onFinished={() => {
                             setIsFormOpen(false);

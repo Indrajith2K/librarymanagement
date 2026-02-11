@@ -71,7 +71,7 @@ function AdminDashboardContent() {
     return query(collection(firestore, 'books'));
   }, [firestore]);
   
-  const circulationLogsQuery = useMemo(() => {
+  const recentCirculationLogsQuery = useMemo(() => {
     if (!firestore) return null;
     return query(
         collection(firestore, 'circulationLogs'), 
@@ -81,15 +81,21 @@ function AdminDashboardContent() {
     );
   }, [firestore]);
 
+  const allCirculationLogsQuery = useMemo(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'circulationLogs'), where('action', '==', 'issue'));
+  }, [firestore]);
+
 
   const { data: members, loading: membersLoading, error: membersError } = useCollection<Member>(membersQuery);
   const { data: books, loading: booksLoading, error: booksError } = useCollection<Book>(booksQuery);
-  const { data: circulationLogs, loading: logsLoading, error: logsError } = useCollection<CirculationLog>(circulationLogsQuery);
+  const { data: recentCirculationLogs, loading: recentLogsLoading, error: recentLogsError } = useCollection<CirculationLog>(recentCirculationLogsQuery);
+  const { data: allCirculationLogs, loading: allLogsLoading, error: allLogsError } = useCollection<CirculationLog>(allCirculationLogsQuery);
 
   const enrichedIssuedBooks = useMemo(() => {
-    if (!circulationLogs || !books || !members) return [];
+    if (!recentCirculationLogs || !books || !members) return [];
     
-    return circulationLogs.map(log => {
+    return recentCirculationLogs.map(log => {
       const book = books.find(b => b.id === log.bookId);
       const member = members.find(m => m.id === log.memberId);
       
@@ -100,9 +106,37 @@ function AdminDashboardContent() {
         memberName: member?.name || 'Unknown Member',
       }
     });
-  }, [circulationLogs, books, members]);
+  }, [recentCirculationLogs, books, members]);
+  
+  const loading = authLoading || adminUserLoading || membersLoading || booksLoading || recentLogsLoading || allLogsLoading;
+  
+  const topChoices = useMemo(() => {
+    if (loading || !allCirculationLogs || !books) {
+        return Array.from({ length: 6 }).map((_, i) => ({ id: `skeleton-${i}`, isLoading: true, title: '', author: '', imageUrl: '', imageHint: '' }));
+    }
 
-  const loading = authLoading || adminUserLoading || membersLoading || booksLoading || logsLoading;
+    const bookCounts = allCirculationLogs.reduce((acc, log) => {
+        acc[log.bookId] = (acc[log.bookId] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const sortedBookIds = Object.keys(bookCounts).sort((a, b) => bookCounts[b] - bookCounts[a]);
+    const topBookIds = sortedBookIds.slice(0, 6);
+    
+    const topBooks = topBookIds.map(bookId => {
+        const book = books.find(b => b.id === bookId);
+        if (!book) return null;
+        return {
+            ...book,
+            isLoading: false,
+            imageUrl: `https://picsum.photos/seed/${book.id}/200/300`,
+            imageHint: 'book cover'
+        };
+    }).filter((b): b is Book & { isLoading: boolean; imageUrl: string; imageHint: string } => b !== null);
+
+    return topBooks;
+
+  }, [allCirculationLogs, books, loading]);
 
   useEffect(() => {
     const isPasswordAdmin = !!sessionStorage.getItem('admin_doc_id');
@@ -134,15 +168,6 @@ function AdminDashboardContent() {
         </div>
     );
   }
-  
-  const topChoices = [
-      { title: 'The Critique of Pure Reason', author: 'Immanuel Kant', imageUrl: 'https://picsum.photos/seed/critique/200/300', imageHint: 'philosophy book' },
-      { title: 'Stroller', author: 'Amanda Parrish Morgan', imageUrl: 'https://picsum.photos/seed/stroller/200/300', imageHint: 'modern novel' },
-      { title: 'The Design of Everyday Things', author: 'Don Norman', imageUrl: 'https://picsum.photos/seed/designdaily/200/300', imageHint: 'design book' },
-      { title: 'Lean UX', author: 'Jeff Gothelf', imageUrl: 'https://picsum.photos/seed/leanux/200/300', imageHint: 'tech book' },
-      { title: 'The Republic', author: 'Plato', imageUrl: 'https://picsum.photos/seed/republic/200/300', imageHint: 'classic book' },
-      { title: 'Ancestor Trouble', author: 'Maud Newton', imageUrl: 'https://picsum.photos/seed/ancestor/200/300', imageHint: 'family history' },
-  ];
 
   return (
     <AdminLayout>
@@ -310,10 +335,20 @@ function AdminDashboardContent() {
                 <h2 className="text-2xl font-bold mb-4">Top Choices</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
                     {topChoices.map((book) => (
-                        <div key={book.title} className="space-y-2">
-                            <Image src={book.imageUrl} alt={book.title} width={200} height={300} className="rounded-md w-full object-cover aspect-[2/3] shadow-lg" data-ai-hint={book.imageHint}/>
-                            <h3 className="font-semibold text-sm truncate">{book.title}</h3>
-                            <p className="text-xs text-muted-foreground truncate">{book.author}</p>
+                        <div key={book.id} className="space-y-2">
+                           {book.isLoading ? (
+                                <>
+                                    <Skeleton className="rounded-md w-full object-cover aspect-[2/3] shadow-lg" />
+                                    <Skeleton className="h-5 w-3/4" />
+                                    <Skeleton className="h-4 w-1/2" />
+                                </>
+                            ) : (
+                                <>
+                                    <Image src={book.imageUrl} alt={book.title} width={200} height={300} className="rounded-md w-full object-cover aspect-[2/3] shadow-lg" data-ai-hint={book.imageHint}/>
+                                    <h3 className="font-semibold text-sm truncate">{book.title}</h3>
+                                    <p className="text-xs text-muted-foreground truncate">{book.author}</p>
+                                </>
+                            )}
                         </div>
                     ))}
                 </div>
@@ -373,7 +408,7 @@ function AdminDashboardContent() {
                                 ))}
                             </TableBody>
                         </Table>
-                         {(logsError) && <p className="text-red-500 text-center p-4">Error loading issued books.</p>}
+                         {(recentLogsError) && <p className="text-red-500 text-center p-4">Error loading issued books.</p>}
                          {!loading && enrichedIssuedBooks.length === 0 && <p className="text-muted-foreground text-center p-8 border-t">No books have been issued recently.</p>}
                     </CardContent>
                 </Card>
@@ -415,3 +450,5 @@ export default function AdminDashboardPage() {
     </AdminUserProvider>
   );
 }
+
+    

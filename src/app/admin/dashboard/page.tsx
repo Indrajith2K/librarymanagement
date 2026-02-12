@@ -73,11 +73,12 @@ function AdminDashboardContent() {
   
   const recentCirculationLogsQuery = useMemo(() => {
     if (!firestore) return null;
+    // Fetch the 10 most recent logs, then we will filter for 'issue' on the client
+    // This avoids needing a composite index on `action` and `issuedAt`.
     return query(
         collection(firestore, 'circulationLogs'), 
-        where('action', '==', 'issue'), 
         orderBy('issuedAt', 'desc'), 
-        limit(5)
+        limit(10)
     );
   }, [firestore]);
 
@@ -95,7 +96,12 @@ function AdminDashboardContent() {
   const enrichedIssuedBooks = useMemo(() => {
     if (!recentCirculationLogs || !books || !members) return [];
     
-    return recentCirculationLogs.map(log => {
+    // Filter client-side for issue actions and limit to 5
+    const issuedLogs = recentCirculationLogs
+        .filter(log => log.action === 'issue')
+        .slice(0, 5);
+
+    return issuedLogs.map(log => {
       const book = books.find(b => b.id === log.bookId);
       const member = members.find(m => m.id === log.memberId);
       
@@ -408,8 +414,10 @@ function AdminDashboardContent() {
                                 ))}
                             </TableBody>
                         </Table>
-                         {(recentLogsError) && <p className="text-red-500 text-center p-4">Error loading issued books.</p>}
-                         {!loading && enrichedIssuedBooks.length === 0 && <p className="text-muted-foreground text-center p-8 border-t">No books have been issued recently.</p>}
+                         {recentLogsError && <p className="text-red-500 text-center p-4">Error loading issued books.</p>}
+                         {!loading && !recentLogsError && enrichedIssuedBooks.length === 0 && (
+                             <p className="text-muted-foreground text-center p-8 border-t">No books have been issued recently.</p>
+                         )}
                     </CardContent>
                 </Card>
                 <Card>
@@ -450,5 +458,3 @@ export default function AdminDashboardPage() {
     </AdminUserProvider>
   );
 }
-
-    

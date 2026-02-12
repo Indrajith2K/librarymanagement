@@ -48,13 +48,6 @@ export default function IssuePage() {
     }, [allBooks, searchTerm]);
     
     useEffect(() => {
-        // Standalone page theming
-        document.documentElement.classList.remove('dark');
-        document.documentElement.classList.add('light');
-        document.documentElement.style.colorScheme = 'light';
-    }, []);
-
-    useEffect(() => {
         if (!isScanning) return;
 
         const handleKeyDown = (event: KeyboardEvent) => {

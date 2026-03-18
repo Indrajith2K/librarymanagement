@@ -1,8 +1,9 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, ScanLine, X, BookOpen, Library } from 'lucide-react';
@@ -19,6 +20,7 @@ interface Book {
   author: string;
   rfidTagId: string;
   status: 'available' | 'issued' | 'lost' | 'damaged' | 'reserved';
+  category?: string;
 }
 
 export default function IssuePage() {
@@ -31,6 +33,7 @@ export default function IssuePage() {
     const [isScanning, setIsScanning] = useState(false);
     const [scannedIdInput, setScannedIdInput] = useState('');
     const [isIssuing, setIsIssuing] = useState(false);
+    const [recommendations, setRecommendations] = useState<Book[]>([]);
 
     const booksQuery = useMemo(() => {
         if (!firestore) return null;
@@ -46,6 +49,31 @@ export default function IssuePage() {
             book.author.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [allBooks, searchTerm]);
+
+    useEffect(() => {
+        if (!scannedBooks.length || !allBooks) {
+          setRecommendations([]);
+          return;
+        }
+    
+        const issueBookIds = new Set(scannedBooks.map(b => b.id));
+        const issueBookCategories = [...new Set(scannedBooks.map(b => b.category).filter(Boolean))];
+    
+        if (issueBookCategories.length === 0) {
+            setRecommendations([]);
+            return;
+        }
+    
+        const potentialRecommendations = allBooks.filter(book =>
+          !issueBookIds.has(book.id) &&
+          book.category && issueBookCategories.includes(book.category)
+        );
+        
+        // Shuffle and take top 3
+        const shuffled = potentialRecommendations.sort(() => 0.5 - Math.random());
+        setRecommendations(shuffled.slice(0, 3));
+    
+    }, [scannedBooks, allBooks]);
     
     useEffect(() => {
         if (!isScanning) return;
@@ -73,6 +101,15 @@ export default function IssuePage() {
         return () => window.removeEventListener('keydown', handleKeyDown);
 
     }, [isScanning, scannedIdInput, allBooks, scannedBooks, toast]);
+
+    const handleSelectBook = (book: Book) => {
+        if (!scannedBooks.some(b => b.id === book.id)) {
+          setScannedBooks([...scannedBooks, book]);
+          toast({ title: 'Book Added', description: `\'\'\'${book.title}\'\'\' has been added to the issue list.` });
+        } else {
+          toast({ variant: 'destructive', title: 'Duplicate Book', description: `\'\'\'${book.title}\'\'\' is already in the list.` });
+        }
+    };
 
     const removeScannedBook = (bookId: string) => {
         setScannedBooks(prev => prev.filter(b => b.id !== bookId));
@@ -165,6 +202,37 @@ export default function IssuePage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {recommendations.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>You Might Also Like</CardTitle>
+                        <CardDescription>Based on your current selection.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {recommendations.map(book => (
+                            <div key={book.id} className="relative group border rounded-lg p-3 space-y-3 text-center">
+                                <Image 
+                                    src={`https://picsum.photos/seed/${book.id}/200/300`} 
+                                    alt={book.title} 
+                                    width={100} 
+                                    height={150} 
+                                    className="rounded-md object-cover w-full aspect-[2/3] shadow-md"
+                                    data-ai-hint="book cover"
+                                />
+                                <div className="space-y-1">
+                                    <h4 className="font-semibold text-sm truncate">{book.title}</h4>
+                                    <p className="text-xs text-muted-foreground truncate">{book.author}</p>
+                                </div>
+                                <Button size="sm" className="w-full" onClick={() => handleSelectBook(book)}>
+                                    Add
+                                </Button>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            )}
+
         </div>
 
         {/* Right side - RFID Scanner and Issue Area */}

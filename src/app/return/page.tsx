@@ -1,24 +1,32 @@
+
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, ScanLine, X, BookCheck, Library } from 'lucide-react';
+import { X, BookCheck, Library, User } from 'lucide-react';
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, where, writeBatch, doc } from 'firebase/firestore';
+import { collection, query, where, writeBatch, doc, getDocs, increment, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { UserSupportChat } from '@/components/UserSupportChat';
+import { format } from 'date-fns';
 
-interface Book {
+interface EnrichedLog {
+  id: string; // Log ID
+  bookId: string;
+  bookTitle?: string;
+  bookAuthor?: string;
+  dueDate?: { seconds: number, nanoseconds: number };
+}
+
+interface Member {
   id: string;
-  title: string;
-  author: string;
-  rfidTagId: string;
-  status: 'available' | 'issued' | 'lost' | 'damaged' | 'reserved';
+  name: string;
+  email: string;
+  rfidCardId: string;
 }
 
 export default function ReturnPage() {
@@ -26,73 +34,97 @@ export default function ReturnPage() {
     const router = useRouter();
     const { toast } = useToast();
     
-    const [searchTerm, setSearchTerm] = useState('');
-    const [scannedBooks, setScannedBooks] = useState<Book[]>([]);
-    const [isScanning, setIsScanning] = useState(false);
-    const [scannedIdInput, setScannedIdInput] = useState('');
+    const [booksToReturn, setBooksToReturn] = useState<EnrichedLog[]>([]);
     const [isReturning, setIsReturning] = useState(false);
 
-    // Query for books that are currently issued
-    const booksQuery = useMemo(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'books'), where('status', '==', 'issued'));
-    }, [firestore]);
+    const [member, setMember] = useState<Member | null>(null);
+    const [issuedLogs, setIssuedLogs] = useState<EnrichedLog[]>([]);
+    const [logsLoading, setLogsLoading] = useState(true);
 
-    const { data: allBooks, loading, error } = useCollection<Book>(booksQuery);
+    const fetchIssuedBooks = useCallback(async (memberId: string) => {
+      if (!firestore) return;
+      setLogsLoading(true);
+      
+      const logsQuery = query(collection(firestore, 'circulationLogs'), where('memberId', '==', memberId), where('status', '==', 'issued'));
+      const logSnapshot = await getDocs(logsQuery);
+      
+      const enrichedLogsPromises = logSnapshot.docs.map(async (logDoc) => {
+          const logData = logDoc.data();
+          const bookRef = doc(firestore, 'books', logData.bookId);
+          const bookSnap = await getDoc(bookRef);
+          return {
+              id: logDoc.id,
+              bookId: logData.bookId,
+              bookTitle: bookSnap.exists() ? bookSnap.data().title : 'Unknown Book',
+              bookAuthor: bookSnap.exists() ? bookSnap.data().author : 'Unknown Author',
+              dueDate: logData.dueDate,
+          };
+      });
+      
+      const logs = await Promise.all(enrichedLogsPromises);
+      setIssuedLogs(logs);
+      setLogsLoading(false);
+  }, [firestore]);
 
-    const filteredBooks = useMemo(() => {
-        if (!allBooks) return [];
-        return allBooks.filter(book => 
-            book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            book.author.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [allBooks, searchTerm]);
-    
+
     useEffect(() => {
-        if (!isScanning) return;
+        const memberRfid = sessionStorage.getItem('quicklook-member-id');
+        if (!memberRfid || !firestore) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Member ID not found. Please scan your ID from the homepage.' });
+            router.push('/');
+            return;
+        }
 
-        const handleKeyDown = (event: KeyboardEvent) => {
-          if (event.key === 'Enter' && scannedIdInput) {
-            const foundBook = allBooks?.find(b => b.rfidTagId === scannedIdInput);
-            if (foundBook) {
-                if (scannedBooks.some(b => b.id === foundBook.id)) {
-                    toast({ variant: 'destructive', title: 'Duplicate Book', description: `\'\'\'${foundBook.title}\'\'\' is already in the list.` });
-                } else {
-                    setScannedBooks(prev => [...prev, foundBook]);
-                    toast({ title: 'Book Added', description: `\'\'\'${foundBook.title}\'\'\' has been added to the return list.` });
-                }
+        const fetchMemberAndBooks = async () => {
+            const membersRef = collection(firestore, 'members');
+            const q = query(membersRef, where('rfidCardId', '==', memberRfid));
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+                const memberDoc = querySnapshot.docs[0];
+                const memberData = { id: memberDoc.id, ...memberDoc.data() } as Member
+                setMember(memberData);
+                await fetchIssuedBooks(memberData.id);
             } else {
-                toast({ variant: 'destructive', title: 'Book Not Found', description: `No issued book with RFID ${scannedIdInput} found.` });
+                 toast({ variant: 'destructive', title: 'Member Not Found', description: `No member found with ID: ${memberRfid}` });
+                 router.push('/');
             }
-            setScannedIdInput(''); // Reset input after each scan attempt
-          } else if (event.key.length === 1) {
-            setScannedIdInput(prev => prev + event.key);
-          }
         };
 
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        fetchMemberAndBooks();
+    }, [firestore, router, toast, fetchIssuedBooks]);
 
-    }, [isScanning, scannedIdInput, allBooks, scannedBooks, toast]);
 
-    const removeScannedBook = (bookId: string) => {
-        setScannedBooks(prev => prev.filter(b => b.id !== bookId));
+    const handleSelectBookToReturn = (log: EnrichedLog) => {
+        if (!booksToReturn.some(l => l.id === log.id)) {
+            setBooksToReturn(prev => [...prev, log]);
+        }
+    };
+
+    const removeBookFromReturn = (logId: string) => {
+        setBooksToReturn(booksToReturn.filter(l => l.id !== logId));
     };
 
     const handleReturnBooks = async () => {
-        if (!firestore || scannedBooks.length === 0) return;
+        if (!firestore || booksToReturn.length === 0) return;
 
         setIsReturning(true);
         const batch = writeBatch(firestore);
 
-        scannedBooks.forEach(book => {
-            const bookRef = doc(firestore, 'books', book.id);
-            batch.update(bookRef, { status: 'available' }); // Change status to 'available'
-        });
+        for(const log of booksToReturn) {
+            const bookRef = doc(firestore, 'books', log.bookId);
+            batch.update(bookRef, { quantityIssued: increment(-1) });
+
+            const logDocRef = doc(firestore, 'circulationLogs', log.id);
+            batch.update(logDocRef, {
+                status: 'returned',
+                returnedAt: serverTimestamp(),
+            });
+        }
 
         try {
             await batch.commit();
-            toast({ title: 'Success!', description: `${scannedBooks.length} book(s) have been returned.` });
+            toast({ title: 'Success!', description: `${booksToReturn.length} book(s) have been returned.` });
             router.push('/return-success');
         } catch (err: any) {
             console.error("Error returning books: ", err);
@@ -109,29 +141,26 @@ export default function ReturnPage() {
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                      <h1 className="text-xl font-bold text-gray-800">Return Books</h1>
-                     <Button variant="outline" onClick={() => router.push('/')}>Cancel</Button>
+                      <div className="flex items-center gap-4">
+                        {logsLoading && <Skeleton className="h-8 w-32" />}
+                        {member && (
+                            <div className="flex items-center gap-2 text-sm font-medium">
+                                <User className="h-4 w-4" /> {member.name}
+                            </div>
+                        )}
+                        <Button variant="outline" onClick={() => router.push('/')}>Cancel</Button>
+                     </div>
                 </div>
             </div>
         </header>
 
       <main className="flex-1 container mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left side - Search and Book List */}
         <div className="lg:col-span-2 space-y-6">
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <Input 
-                    placeholder="Search by title or author..." 
-                    className="pl-10 h-12 text-lg rounded-full shadow-sm"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-            </div>
-            
             <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
-                         <CardTitle className="flex items-center gap-2"><BookCheck className="h-5 w-5" /> Currently Borrowed Books</CardTitle>
-                         <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">{allBooks?.length ?? 0} Total</span>
+                         <CardTitle className="flex items-center gap-2"><BookCheck className="h-5 w-5" /> Your Borrowed Books</CardTitle>
+                         <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">{issuedLogs.length} book(s)</span>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -141,86 +170,70 @@ export default function ReturnPage() {
                                 <TableRow>
                                     <TableHead>Title</TableHead>
                                     <TableHead>Author</TableHead>
-                                    <TableHead>RFID Tag ID</TableHead>
+                                    <TableHead>Due Date</TableHead>
+                                    <TableHead className="text-right">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {loading && Array.from({length: 5}).map((_, i) => (
+                                {logsLoading && Array.from({length: 3}).map((_, i) => (
                                     <TableRow key={i}>
                                         <TableCell><Skeleton className="h-6 w-48" /></TableCell>
                                         <TableCell><Skeleton className="h-6 w-32" /></TableCell>
                                         <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                                        <TableCell className="text-right"><Skeleton className="h-8 w-20" /></TableCell>
                                     </TableRow>
                                 ))}
-                                {!loading && filteredBooks.map(book => (
-                                    <TableRow key={book.id}>
-                                        <TableCell className="font-medium">{book.title}</TableCell>
-                                        <TableCell>{book.author}</TableCell>
-                                        <TableCell className="font-mono text-xs">{book.rfidTagId}</TableCell>
+                                {!logsLoading && issuedLogs.map(log => (
+                                    <TableRow key={log.id}>
+                                        <TableCell className="font-medium">{log.bookTitle}</TableCell>
+                                        <TableCell>{log.bookAuthor}</TableCell>
+                                        <TableCell>{log.dueDate ? format(log.dueDate.seconds * 1000, 'dd MMM, yyyy') : 'N/A'}</TableCell>
+                                        <TableCell className="text-right">
+                                             <Button size="sm" onClick={() => handleSelectBookToReturn(log)} disabled={booksToReturn.some(b => b.id === log.id)}>
+                                                {booksToReturn.some(b => b.id === log.id) ? 'Selected' : 'Select for Return'}
+                                            </Button>
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
                         </Table>
-                         {error && <p className="text-red-500 text-center p-4">Error loading books: {error.message}</p>}
-                        {!loading && filteredBooks.length === 0 && <p className="text-muted-foreground text-center p-8">No issued books found.</p>}
+                        {!logsLoading && issuedLogs.length === 0 && <p className="text-muted-foreground text-center p-8">You have no books currently checked out.</p>}
                     </div>
                 </CardContent>
             </Card>
         </div>
 
-        {/* Right side - RFID Scanner and Return Area */}
         <div className="space-y-6">
             <Card className="bg-white sticky top-24">
-                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><ScanLine className="h-5 w-5" /> RFID Return Scanner</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex flex-col items-center justify-center space-y-4 p-4 border-2 border-dashed rounded-lg">
-                        <p className="text-sm text-center text-gray-500">
-                           {isScanning ? 'Scanner is active. Present books now.' : 'Activate the scanner to add books to the return list.'}
-                        </p>
-                        <Button onClick={() => setIsScanning(prev => !prev)} variant={isScanning ? 'destructive' : 'default'} className="w-full">
-                            {isScanning ? 'Deactivate Scanner' : 'Activate RFID Scanner'}
-                        </Button>
-                         {isScanning && (
-                            <p className="text-xs text-primary animate-pulse text-center">
-                                Listening for RFID tags... <br/> (Simulated via keyboard input + Enter)
-                            </p>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-            
-            <Card className="bg-white">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Library className="h-5 w-5" /> Books to Return ({scannedBooks.length})</CardTitle>
+                    <CardTitle className="flex items-center gap-2"><Library className="h-5 w-5" /> Books to Return ({booksToReturn.length})</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {scannedBooks.length > 0 ? (
-                        <div className="space-y-2 max-h-60 overflow-y-auto">
-                            {scannedBooks.map(book => (
-                                <div key={book.id} className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
+                    {booksToReturn.length > 0 ? (
+                        <div className="space-y-2 max-h-80 overflow-y-auto">
+                            {booksToReturn.map(log => (
+                                <div key={log.id} className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
                                     <div>
-                                        <p className="font-medium text-sm">{book.title}</p>
-                                        <p className="text-xs text-gray-500">{book.author}</p>
+                                        <p className="font-medium text-sm">{log.bookTitle}</p>
+                                        <p className="text-xs text-gray-500">{log.bookAuthor}</p>
                                     </div>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeScannedBook(book.id)}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeBookFromReturn(log.id)}>
                                         <X className="h-4 w-4" />
                                     </Button>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <p className="text-center text-sm text-gray-500 py-8">No books in the return list. Scan a book to add it.</p>
+                        <p className="text-center text-sm text-gray-500 py-8">Select a book from the list to begin the return process.</p>
                     )}
                     <Separator className="my-4" />
                     <Button 
                         className="w-full" 
                         size="lg"
-                        disabled={scannedBooks.length === 0 || isReturning}
+                        disabled={booksToReturn.length === 0 || isReturning}
                         onClick={handleReturnBooks}
                     >
-                        {isReturning ? 'Returning...' : `Return ${scannedBooks.length} Book(s)`}
+                        {isReturning ? 'Returning...' : `Return ${booksToReturn.length} Book(s)`}
                     </Button>
                 </CardContent>
             </Card>

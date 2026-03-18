@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -23,6 +24,7 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 type ScanState = 'idle' | 'verified' | 'options';
 
@@ -111,10 +113,12 @@ export default function Home() {
   const [scanState, setScanState] = useState<ScanState>('idle');
   const [rfidInput, setRfidInput] = useState('');
   const router = useRouter();
+  const { toast } = useToast();
 
   const handleScan = () => {
-    // You could do something with the rfidInput here, like save it
-    console.log('Scanned RFID:', rfidInput);
+    // Store the "scanned" ID in session storage to identify the user
+    sessionStorage.setItem('quicklook-member-id', rfidInput);
+    toast({ title: 'ID Scanned', description: 'Member identified successfully.' });
     setScanState('verified');
   };
 
@@ -130,22 +134,20 @@ export default function Home() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (scanState !== 'idle') return;
 
-      // When the 'Enter' key is pressed, we'll consider the scan complete.
       if (event.key === 'Enter') {
         if (rfidInput.length > 0) {
           handleScan();
-          setRfidInput(''); // Reset for the next scan
+          setRfidInput('');
         }
       } else if (event.key.length === 1) {
-        // Append character keys to our input state
         setRfidInput((prev) => prev + event.key);
+      } else if (event.key === 'Backspace') {
+        setRfidInput((prev) => prev.slice(0, -1));
       }
     };
 
-    // Add event listener for keyboard input
     window.addEventListener('keydown', handleKeyDown);
 
-    // Clean up the event listener when the component unmounts
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
@@ -155,7 +157,7 @@ export default function Home() {
     if (scanState === 'verified') {
       const timer = setTimeout(() => {
         setScanState('options');
-      }, 1500); // Wait for 1.5 seconds before showing options
+      }, 1500);
 
       return () => clearTimeout(timer);
     }
@@ -180,6 +182,7 @@ export default function Home() {
                         <p className="mt-6 text-center text-xl font-semibold text-foreground">
                         Scan your ID card
                         </p>
+                        <p className="text-sm text-muted-foreground mt-2">(Simulated via keyboard input + Enter)</p>
                     </Button>
                 </CardContent>
             </Card>
@@ -216,9 +219,9 @@ export default function Home() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                           <AlertDialogHeader>
-                          <AlertDialogTitle>Are you sure you want to issue an item?</AlertDialogTitle>
+                          <AlertDialogTitle>Proceed to Issue Books?</AlertDialogTitle>
                           <AlertDialogDescription>
-                              This action will begin the item issuance process.
+                              This will take you to the book issuance page.
                           </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -240,9 +243,9 @@ export default function Home() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure you want to return an item?</AlertDialogTitle>
+                            <AlertDialogTitle>Proceed to Return Books?</AlertDialogTitle>
                             <AlertDialogDescription>
-                                This action will begin the item return process.
+                               This will take you to the book return page.
                             </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

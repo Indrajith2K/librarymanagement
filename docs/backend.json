@@ -24,28 +24,16 @@
                 "name": { "type": "string", "description": "The full name of the member." },
                 "memberType": { "type": "string", "enum": ["student", "staff"] },
                 "email": { "type": "string", "format": "email" },
-                "rfidCardId": { "type": "string", "description": "The ID of the RFID card assigned to this member." },
+                "rfidCardId": { "type": "string", "description": "The ID of the RFID card assigned to this member. Used for login simulation." },
                 "isActive": { "type": "boolean", "description": "Whether the member's account is active." },
                 "createdAt": { "type": "string", "format": "date-time" },
                 "updatedAt": { "type": "string", "format": "date-time" }
             },
-            "required": ["name", "memberType", "email", "isActive"]
-        },
-        "RfidTag": {
-            "title": "RFID Tag",
-            "description": "Represents an RFID tag that can be assigned to a book.",
-            "type": "object",
-            "properties": {
-                "tagId": { "type": "string", "description": "The unique identifier of the RFID tag." },
-                "assignedBookId": { "type": "string", "description": "The ID of the book this tag is assigned to." },
-                "lastSeenAt": { "type": "string", "format": "date-time", "description": "Timestamp of the last scan." },
-                "lastSeenLocation": { "type": "string", "description": "Identifier for the gate or reader that last scanned the tag." }
-            },
-            "required": ["tagId"]
+            "required": ["name", "memberType", "email", "isActive", "rfidCardId"]
         },
         "CirculationLog": {
             "title": "Circulation Log",
-            "description": "A log entry for a circulation event (issue, return, renew).",
+            "description": "A log entry for a circulation event (issue or return).",
             "type": "object",
             "properties": {
                 "bookId": { "type": "string" },
@@ -55,132 +43,33 @@
                 "issuedAt": { "type": "string", "format": "date-time" },
                 "dueDate": { "type": "string", "format": "date-time" },
                 "returnedAt": { "type": "string", "format": "date-time" },
-                "actorId": { "type": "string", "description": "The UID of the admin who performed the action." }
+                "actorId": { "type": "string", "description": "The UID of the admin or member who performed the action." }
             },
             "required": ["bookId", "memberId", "action", "actorId", "issuedAt", "status"]
         },
-        "InventoryScan": {
-            "title": "Inventory Scan",
-            "description": "Represents a stock-taking session.",
-            "type": "object",
-            "properties": {
-                "sessionId": { "type": "string" },
-                "startTime": { "type": "string", "format": "date-time" },
-                "endTime": { "type": "string", "format": "date-time" },
-                "scannedTags": { "type": "array", "items": { "type": "string" } },
-                "adminUserId": { "type": "string" }
-            },
-            "required": ["sessionId", "startTime", "adminUserId"]
-        },
-        "SecurityAlert": {
-            "title": "Security Alert",
-            "description": "An alert triggered by an RFID gate.",
-            "type": "object",
-            "properties": {
-                "bookId": { "type": "string" },
-                "rfidTagId": { "type": "string" },
-                "gateId": { "type": "string" },
-                "timestamp": { "type": "string", "format": "date-time" },
-                "status": { "type": "string", "enum": ["unresolved", "reviewed", "resolved"] },
-                "notes": { "type": "string" }
-            },
-            "required": ["rfidTagId", "gateId", "timestamp", "status"]
-        },
-        "Reservation": {
-            "title": "Reservation",
-            "description": "A member's reservation for a book.",
-            "type": "object",
-            "properties": {
-                "bookId": { "type": "string" },
-                "memberId": { "type": "string" },
-                "status": { "type": "string", "enum": ["pending", "approved", "rejected", "fulfilled"] },
-                "requestedAt": { "type": "string", "format": "date-time" },
-                "handledBy": { "type": "string", "description": "Admin who handled the request." }
-            },
-            "required": ["bookId", "memberId", "status", "requestedAt"]
-        },
-        "Fine": {
-            "title": "Fine",
-            "description": "A fine incurred by a member for an overdue book.",
-            "type": "object",
-            "properties": {
-                "memberId": { "type": "string" },
-                "bookId": { "type": "string" },
-                "circulationLogId": { "type": "string" },
-                "amount": { "type": "number" },
-                "status": { "type": "string", "enum": ["outstanding", "paid", "waived"] },
-                "reasonWaived": { "type": "string" },
-                "createdAt": { "type": "string", "format": "date-time" },
-                "paidAt": { "type": "string", "format": "date-time" }
-            },
-            "required": ["memberId", "bookId", "amount", "status"]
-        },
-        "Report": {
-            "title": "Report",
-            "description": "Metadata for a generated report.",
-            "type": "object",
-            "properties": {
-                "reportType": { "type": "string" },
-                "generatedAt": { "type": "string", "format": "date-time" },
-                "adminUserId": { "type": "string" },
-                "fileUrl": { "type": "string", "description": "Link to the exported file in Cloud Storage." },
-                "filters": { "type": "object" }
-            },
-            "required": ["reportType", "generatedAt", "adminUserId"]
-        },
         "AdminUser": {
             "title": "Admin User",
-            "description": "An administrator or staff account with specific roles. Can be authenticated via Firebase Auth or a Staff ID/Password combination stored directly in Firestore.",
+            "description": "An administrator or staff account with specific roles.",
             "type": "object",
             "properties": {
-                "uid": { "type": "string", "description": "Matches Firebase Auth UID for users logging in with Google. Can be empty for password-based users." },
-                "email": { "type": "string", "format": "email", "description": "Email of the admin user, primary identifier for Google Auth." },
+                "uid": { "type": "string", "description": "Matches Firebase Auth UID for users logging in with Google." },
+                "email": { "type": "string", "format": "email", "description": "Email of the admin user." },
                 "role": { "type": "string", "enum": ["Super Admin", "Librarian", "Assistant", "Logger"] },
                 "displayName": { "type": "string" },
                 "staffId": { "type": "string", "description": "Unique Staff ID for password-based login." },
-                "password": { "type": "string", "description": "Plaintext password. HIGHLY INSECURE. For demonstration only." },
-                "photoURL": { "type": "string", "format": "uri", "description": "URL for the admin's profile picture." }
+                "password": { "type": "string", "description": "Plaintext password for demonstration." },
+                "photoURL": { "type": "string", "format": "uri" }
             },
             "required": ["role"]
-        },
-        "SystemSetting": {
-            "title": "System Setting",
-            "description": "Configuration for library policies.",
-            "type": "object",
-            "properties": {
-                "settingName": { "type": "string" },
-                "value": { "type": "object" }
-            },
-            "required": ["settingName", "value"]
-        },
-        "AdminActivityLog": {
-            "title": "Admin Activity Log",
-            "description": "An immutable log of actions performed by admins.",
-            "type": "object",
-            "properties": {
-                "adminUserId": { "type": "string" },
-                "action": { "type": "string" },
-                "details": { "type": "object" },
-                "timestamp": { "type": "string", "format": "date-time" }
-            },
-            "required": ["adminUserId", "action", "timestamp"]
         }
     },
     "auth": {
         "providers": ["password", "google.com"]
     },
     "firestore": {
-        "/books/{bookId}": { "schema": { "$ref": "#/entities/Book" }, "description": "Collection of all books in the library." },
+        "/books/{bookId}": { "schema": { "$ref": "#/entities/Book" }, "description": "Collection of all book titles." },
         "/members/{memberId}": { "schema": { "$ref": "#/entities/Member" }, "description": "Collection of all library members." },
-        "/rfidTags/{rfidTagId}": { "schema": { "$ref": "#/entities/RfidTag" }, "description": "Collection of all RFID tags." },
         "/circulationLogs/{logId}": { "schema": { "$ref": "#/entities/CirculationLog" }, "description": "Logs of all circulation events." },
-        "/inventoryScans/{scanId}": { "schema": { "$ref": "#/entities/InventoryScan" }, "description": "Records of inventory scanning sessions." },
-        "/securityAlerts/{alertId}": { "schema": { "$ref": "#/entities/SecurityAlert" }, "description": "Security alerts from RFID gates." },
-        "/reservations/{reservationId}": { "schema": { "$ref": "#/entities/Reservation" }, "description": "Book reservations made by members." },
-        "/fines/{fineId}": { "schema": { "$ref": "entities/Fine" }, "description": "Fines incurred by members." },
-        "/reports/{reportId}": { "schema": { "$ref": "#/entities/Report" }, "description": "Metadata for generated reports." },
-        "/adminusers/{userId}": { "schema": { "$ref": "#/entities/AdminUser" }, "description": "Administrator and staff accounts." },
-        "/systemSettings/{settingId}": { "schema": { "$ref": "#/entities/SystemSetting" }, "description": "System-wide library settings." },
-        "/adminActivityLogs/{logId}": { "schema": { "$ref": "#/entities/AdminActivityLog" }, "description": "Immutable audit trail of admin actions." }
+        "/adminusers/{userId}": { "schema": { "$ref": "#/entities/AdminUser" }, "description": "Administrator and staff accounts." }
     }
 }

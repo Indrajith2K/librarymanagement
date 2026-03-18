@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo, useEffect, Fragment, useCallback } from 'react';
+import Image from 'next/image';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +22,7 @@ interface Book {
   id: string;
   title: string;
   author: string;
+  category: string;
   quantityTotal: number;
   quantityIssued: number;
 }
@@ -56,6 +58,7 @@ function IssueTab() {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [booksToIssue, setBooksToIssue] = useState<Book[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [recommendations, setRecommendations] = useState<Book[]>([]);
 
   const [isMemberDialogOpen, setMemberDialogOpen] = useState(false);
   const [isBookDialogOpen, setBookDialogOpen] = useState(false);
@@ -82,6 +85,32 @@ function IssueTab() {
         (b.author?.toLowerCase() || '').includes(lowercasedSearch)
     );
   }, [availableBooks, bookSearch]);
+
+  useEffect(() => {
+    if (!booksToIssue.length || !allBooks) {
+      setRecommendations([]);
+      return;
+    }
+
+    const issueBookIds = new Set(booksToIssue.map(b => b.id));
+    const issueBookCategories = [...new Set(booksToIssue.map(b => b.category).filter(Boolean))];
+
+    if (issueBookCategories.length === 0) {
+        setRecommendations([]);
+        return;
+    }
+
+    const potentialRecommendations = allBooks.filter(book =>
+      !issueBookIds.has(book.id) &&
+      book.category && issueBookCategories.includes(book.category) &&
+      ((book.quantityTotal || 0) - (book.quantityIssued || 0)) > 0
+    );
+    
+    // Shuffle and take top 3
+    const shuffled = potentialRecommendations.sort(() => 0.5 - Math.random());
+    setRecommendations(shuffled.slice(0, 3));
+
+  }, [booksToIssue, allBooks]);
 
   const handleSelectBook = (book: Book) => {
     if (!booksToIssue.some(b => b.id === book.id)) {
@@ -204,6 +233,35 @@ function IssueTab() {
                      </Dialog>
                 </CardContent>
             </Card>
+             {recommendations.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>You Might Also Like</CardTitle>
+                        <CardDescription>Based on your current selection.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {recommendations.map(book => (
+                            <div key={book.id} className="relative group border rounded-lg p-3 space-y-3 text-center">
+                                <Image 
+                                    src={`https://picsum.photos/seed/${book.id}/200/300`} 
+                                    alt={book.title} 
+                                    width={100} 
+                                    height={150} 
+                                    className="rounded-md object-cover w-full aspect-[2/3] shadow-md"
+                                    data-ai-hint="book cover"
+                                />
+                                <div className="space-y-1">
+                                    <h4 className="font-semibold text-sm truncate">{book.title}</h4>
+                                    <p className="text-xs text-muted-foreground truncate">{book.author}</p>
+                                </div>
+                                <Button size="sm" className="w-full" onClick={() => handleSelectBook(book)}>
+                                    Add
+                                </Button>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            )}
         </div>
         <div className="md:col-span-1 space-y-6">
             <Card className="sticky top-24">

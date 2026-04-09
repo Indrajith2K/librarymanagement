@@ -9,9 +9,18 @@ interface UseCollectionReturn<T> {
   error: Error | null;
 }
 
-export function useCollection<T>(query: Query<DocumentData> | null): UseCollectionReturn<T> {
-  const [data, setData] = useState<T[] | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+// Global cache to prevent loading flashes across page navigation
+const globalQueryCache: Record<string, any[]> = {};
+
+export function useCollection<T>(query: Query<DocumentData> | null, cacheKey?: string): UseCollectionReturn<T> {
+  const [data, setData] = useState<T[] | null>(() => {
+    if (cacheKey && globalQueryCache[cacheKey]) return globalQueryCache[cacheKey];
+    return null;
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (cacheKey && globalQueryCache[cacheKey]) return false;
+    return true;
+  });
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
@@ -21,11 +30,15 @@ export function useCollection<T>(query: Query<DocumentData> | null): UseCollecti
       return;
     }
 
-    setLoading(true);
+    if (!cacheKey || !globalQueryCache[cacheKey]) {
+      setLoading(true);
+    }
+    
     const unsubscribe = onSnapshot(
       query,
       (snapshot: QuerySnapshot<DocumentData>) => {
         const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
+        if (cacheKey) globalQueryCache[cacheKey] = docs;
         setData(docs);
         setLoading(false);
         setError(null);
@@ -39,7 +52,7 @@ export function useCollection<T>(query: Query<DocumentData> | null): UseCollecti
 
     // Clean up the listener on unmount
     return () => unsubscribe();
-  }, [query]);
+  }, [query, cacheKey]);
 
   return { data, loading, error };
 }

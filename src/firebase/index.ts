@@ -1,7 +1,7 @@
 'use client';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { getFirestore, Firestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { firebaseConfig } from './config';
 
@@ -23,8 +23,18 @@ function initializeFirebase(): {
   }
   
   const firebaseApp = initializeApp(firebaseConfig);
+  let firestore: Firestore;
+  
+  // Enable offline persistence for faster retrieval
+  if (typeof window !== 'undefined') {
+    firestore = initializeFirestore(firebaseApp, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
+  } else {
+    firestore = getFirestore(firebaseApp);
+  }
+  
   const auth = getAuth(firebaseApp);
-  const firestore = getFirestore(firebaseApp);
   const storage = getStorage(firebaseApp);
   
   return { firebaseApp, auth, firestore, storage };

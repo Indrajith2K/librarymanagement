@@ -230,7 +230,7 @@ function MembersPageContent() {
     return query(collection(firestore, 'members'));
   }, [firestore]);
 
-  const { data: members, loading: membersLoading, error } = useCollection<Member>(membersQuery);
+  const { data: members, loading: membersLoading, error } = useCollection<Member>(membersQuery, 'members');
   
   const handleDeleteMember = async (memberId: string) => {
     if (!firestore) {

@@ -174,7 +174,7 @@ function UsersPageContent() {
     return query(collection(firestore, 'adminusers'));
   }, [firestore]);
 
-  const { data: users, loading: usersLoading, error } = useCollection<AdminUser>(usersQuery);
+  const { data: users, loading: usersLoading, error } = useCollection<AdminUser>(usersQuery, 'adminusers');
   
   const handleDeleteUser = async (userId: string) => {
     if (!firestore) {

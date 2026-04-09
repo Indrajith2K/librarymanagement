@@ -88,8 +88,8 @@ function AdminDashboardContent() {
   }, [firestore]);
 
 
-  const { data: members, loading: membersLoading, error: membersError } = useCollection<Member>(membersQuery);
-  const { data: books, loading: booksLoading, error: booksError } = useCollection<Book>(booksQuery);
+  const { data: members, loading: membersLoading, error: membersError } = useCollection<Member>(membersQuery, 'members');
+  const { data: books, loading: booksLoading, error: booksError } = useCollection<Book>(booksQuery, 'books');
   const { data: recentCirculationLogs, loading: recentLogsLoading, error: recentLogsError } = useCollection<CirculationLog>(recentCirculationLogsQuery);
   const { data: allCirculationLogs, loading: allLogsLoading, error: allLogsError } = useCollection<CirculationLog>(allCirculationLogsQuery);
 

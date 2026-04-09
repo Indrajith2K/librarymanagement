@@ -192,7 +192,7 @@ function BooksPageContent() {
     return query(collection(firestore, 'books'));
   }, [firestore]);
 
-  const { data: books, loading: booksLoading, error } = useCollection<Book>(booksQuery);
+  const { data: books, loading: booksLoading, error } = useCollection<Book>(booksQuery, 'books');
 
   const filteredBooks = useMemo(() => {
     if (!books) {

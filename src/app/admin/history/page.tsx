@@ -42,8 +42,8 @@ function HistoryPageContent() {
   const membersQuery = useMemo(() => firestore ? query(collection(firestore, 'members')) : null, [firestore]);
 
   const { data: logs, loading: logsLoading, error: logsError } = useCollection<CirculationLog>(logsQuery);
-  const { data: books, loading: booksLoading, error: booksError } = useCollection<Book>(booksQuery);
-  const { data: members, loading: membersLoading, error: membersError } = useCollection<Member>(membersQuery);
+  const { data: books, loading: booksLoading, error: booksError } = useCollection<Book>(booksQuery, 'books');
+  const { data: members, loading: membersLoading, error: membersError } = useCollection<Member>(membersQuery, 'members');
 
   const loading = logsLoading || booksLoading || membersLoading;
 

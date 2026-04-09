@@ -72,7 +72,7 @@ export default function IssuePage() {
         fetchMember();
     }, [firestore, router, toast]);
 
-    const { data: allBooks, loading: booksLoading, error } = useCollection<Book>(useMemo(() => firestore ? query(collection(firestore, 'books')) : null, [firestore]));
+    const { data: allBooks, loading: booksLoading, error } = useCollection<Book>(useMemo(() => firestore ? query(collection(firestore, 'books')) : null, [firestore]), 'books');
 
     const availableBooks = useMemo(() => {
         if (!allBooks) return [];

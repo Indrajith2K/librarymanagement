@@ -71,22 +71,22 @@ export function AdminUserProvider({ children }: { children: ReactNode }) {
                     if (docSnap.exists()) {
                         setAdminUser(docSnap.data() as AdminUser);
                         setAdminUserDocId(docSnap.id);
-                    } else {
-                        setAdminUser(null);
-                        setAdminUserDocId(null);
-                    }
-                    setLoading(false);
-                }, (error) => {
-                    console.error("Firestore snapshot error for password user:", error);
-                    setLoading(false);
-                });
-            } else if (authUser) {
-                const q = query(collection(firestore, 'adminusers'), where('email', '==', authUser.email));
-                unsubscribe = onSnapshot(q, (querySnapshot) => {
-                    if (!querySnapshot.empty) {
-                        const userDoc = querySnapshot.docs[0];
-                        setAdminUser(userDoc.data() as AdminUser);
-                        setAdminUserDocId(userDoc.id);
+                        } else {
+                            setAdminUser(null);
+                            setAdminUserDocId(null);
+                        }
+                        setLoading(false);
+                    }, (error) => {
+                        console.error("Firestore snapshot error for password user:", error);
+                        setLoading(false);
+                    });
+                } else if (authUser) {
+                    const q = query(collection(firestore, 'adminusers'), where('email', '==', authUser.email));
+                    unsubscribe = onSnapshot(q, (querySnapshot) => {
+                        if (!querySnapshot.empty) {
+                            const userDoc = querySnapshot.docs[0];
+                            setAdminUser(userDoc.data() as AdminUser);
+                            setAdminUserDocId(userDoc.id);
                     } else {
                         setAdminUser(null);
                         setAdminUserDocId(null);

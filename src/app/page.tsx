@@ -48,7 +48,7 @@ function SearchComponent() {
     return query(collection(firestore, 'books'));
   }, [firestore]);
 
-  const { data: books, loading: booksLoading } = useCollection<Book>(booksQuery);
+  const { data: books, loading: booksLoading } = useCollection<Book>(booksQuery, 'books');
 
   const filteredBooks = useMemo(() => {
     if (!searchTerm.trim() || !books) return [];

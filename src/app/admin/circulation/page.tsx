@@ -66,9 +66,9 @@ function IssueTab() {
   const [memberSearch, setMemberSearch] = useState('');
   const [bookSearch, setBookSearch] = useState('');
 
-  const { data: members, loading: membersLoading } = useCollection<Member>(useMemo(() => firestore ? query(collection(firestore, 'members')) : null, [firestore]));
+  const { data: members, loading: membersLoading } = useCollection<Member>(useMemo(() => firestore ? query(collection(firestore, 'members')) : null, [firestore]), 'members');
   
-  const { data: allBooks, loading: booksLoading } = useCollection<Book>(useMemo(() => firestore ? query(collection(firestore, 'books')) : null, [firestore]));
+  const { data: allBooks, loading: booksLoading } = useCollection<Book>(useMemo(() => firestore ? query(collection(firestore, 'books')) : null, [firestore]), 'books');
 
   const filteredMembers = useMemo(() => members?.filter(m => m.name.toLowerCase().includes(memberSearch.toLowerCase())), [members, memberSearch]);
   
@@ -315,7 +315,7 @@ function ReturnTab() {
   const [isMemberDialogOpen, setMemberDialogOpen] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
 
-  const { data: members, loading: membersLoading } = useCollection<Member>(useMemo(() => firestore ? query(collection(firestore, 'members')) : null, [firestore]));
+  const { data: members, loading: membersLoading } = useCollection<Member>(useMemo(() => firestore ? query(collection(firestore, 'members')) : null, [firestore]), 'members');
   const filteredMembers = useMemo(() => members?.filter(m => m.name.toLowerCase().includes(memberSearch.toLowerCase())), [members, memberSearch]);
 
   const fetchIssuedBooks = useCallback(async (memberId: string) => {

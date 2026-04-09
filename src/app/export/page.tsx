@@ -8498,7 +8498,7 @@ function FileDisplay({ path, content }) {
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content.trim());
-    toast({ title: 'Copied!', description: \`Content of \${path} copied to clipboard.\` });
+    toast({ title: 'Copied!', description: 'Content of ' + path + ' copied to clipboard.' });
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

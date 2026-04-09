@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Check, Clipboard } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Toaster, useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
+import { Toaster } from '@/components/ui/toaster';
 import {
   Accordion,
   AccordionContent,
